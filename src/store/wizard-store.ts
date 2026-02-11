@@ -70,7 +70,6 @@ const defaultAnswers: WizardAnswers = {
   },
   reliability: {
     raidType: 'auto',
-    needUps: false,
     ssdCache: false,
     criticality: 'medium',
   },
@@ -78,6 +77,7 @@ const defaultAnswers: WizardAnswers = {
     placement: 'home',
     noiseLevel: 'quiet',
     bayCount: 'auto',
+    needUps: false,
   },
   budget: {
     includeDisks: true,

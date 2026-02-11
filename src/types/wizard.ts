@@ -65,7 +65,6 @@ export interface NetworkAnswers {
 
 export interface ReliabilityAnswers {
   raidType: RaidType;
-  needUps: boolean;
   ssdCache: boolean;
   criticality: DataCriticality;
 }
@@ -74,6 +73,7 @@ export interface FormFactorAnswers {
   placement: Placement;
   noiseLevel: NoiseLevel;
   bayCount: BayCount;
+  needUps: boolean;
 }
 
 export interface BudgetAnswers {

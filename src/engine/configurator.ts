@@ -154,7 +154,7 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     has10gbe,
   });
   const psu = selectPSU(totalPowerW);
-  const needUps = answers.reliability.needUps || shouldRecommendUPS(answers);
+  const needUps = answers.formFactor.needUps || shouldRecommendUPS(answers);
   const ups = needUps ? selectUPS(totalPowerW) : null;
 
   // 9. Price breakdown

@@ -1,10 +1,12 @@
 import { useWizardStore } from '../../store/wizard-store';
 import { OptionCard } from '../ui/OptionCard';
+import { shouldRecommendUPS } from '../../engine/component-selector';
 import type { Placement, NoiseLevel, BayCount } from '../../types/wizard';
 
 export function StepFormFactor() {
   const { answers, setFormFactor } = useWizardStore();
   const data = answers.formFactor;
+  const recommendUPS = shouldRecommendUPS(answers);
 
   const update = (partial: Partial<typeof data>) => {
     setFormFactor({ ...data, ...partial });
@@ -35,7 +37,7 @@ export function StepFormFactor() {
       <div>
         <h2 className="text-xl font-bold text-text-primary mb-1">Форм-фактор и размещение</h2>
         <p className="text-sm text-text-secondary">
-          Где будет стоять NAS и какой корпус предпочитаете
+          Где будет стоять NAS, корпус и питание
         </p>
       </div>
 
@@ -85,6 +87,28 @@ export function StepFormFactor() {
                 compact
               />
             ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => update({ needUps: !data.needUps })}
+            className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${
+              data.needUps ? 'bg-accent' : 'bg-border'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                data.needUps ? 'translate-x-6' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+          <div>
+            <span className="text-sm text-text-primary">ИБП (UPS)</span>
+            {recommendUPS && !data.needUps && (
+              <p className="text-xs text-accent-light">Рекомендуется для бизнеса / видеонаблюдения</p>
+            )}
           </div>
         </div>
       </div>

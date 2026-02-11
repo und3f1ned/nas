@@ -1,6 +1,6 @@
 import { useWizardStore } from '../../store/wizard-store';
 import { OptionCard } from '../ui/OptionCard';
-import { shouldRecommendSSDCache, shouldRecommendUPS } from '../../engine/component-selector';
+import { shouldRecommendSSDCache } from '../../engine/component-selector';
 import type { RaidType, DataCriticality } from '../../types/wizard';
 
 export function StepReliability() {
@@ -26,14 +26,13 @@ export function StepReliability() {
   ];
 
   const recommendSSD = shouldRecommendSSDCache(answers);
-  const recommendUPS = shouldRecommendUPS(answers);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-text-primary mb-1">Надёжность и защита данных</h2>
         <p className="text-sm text-text-secondary">
-          Уровень RAID, кэширование и бесперебойное питание
+          Уровень RAID, кэширование и критичность данных
         </p>
       </div>
 
@@ -95,27 +94,6 @@ export function StepReliability() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => update({ needUps: !data.needUps })}
-              className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${
-                data.needUps ? 'bg-accent' : 'bg-border'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  data.needUps ? 'translate-x-6' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-            <div>
-              <span className="text-sm text-text-primary">ИБП (UPS)</span>
-              {recommendUPS && !data.needUps && (
-                <p className="text-xs text-accent-light">Рекомендуется для бизнеса / видеонаблюдения</p>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>
