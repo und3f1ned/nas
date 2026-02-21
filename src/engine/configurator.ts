@@ -1,19 +1,22 @@
 import type { WizardAnswers } from '../types/wizard';
 import type { NASConfig, StorageBreakdownResult, StorageAllocation } from '../types/config';
 import { calcSurveillanceStorageTB } from './surveillance-calculator';
-import { calcRaidCapacity, calcTotalRequiredTB, selectRaidType } from './storage-calculator';
+import { calcRaidCapacity, calcTotalRequiredTB } from './storage-calculator';
 import {
-  calcCpuScore,
-  calcRamGB,
-  selectMotherboard,
-  selectCase,
-  selectDrives,
-  selectSSDCache,
-  shouldRecommendUPS,
+  determineCpuRequirements,
+  determineRamRequirements,
+  determineStorageRequirements,
+  determineSsdCache,
+  determineTranscoding,
+  determineAiRequirements,
+  determineNetworkRequirements,
+  determineFormFactor,
+  determineUps,
 } from './component-selector';
-import { calcPowerWatts, selectPSU, selectUPS } from './power-calculator';
-import { calcPriceBreakdown } from './price-calculator';
+import { estimatePowerWatts, determinePsu } from './power-calculator';
+import { calcPriceEstimate } from './price-calculator';
 import { findClosestSynology } from './synology-comparator';
+import { selectInsights } from '../data/insights';
 
 export function generateConfig(answers: WizardAnswers): NASConfig {
   // 1. Calculate storage needs
@@ -64,10 +67,9 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     growthMultiplier,
   });
 
-  // 2. Determine bay count
+  // 2. Bay count
   let maxBays: number;
   if (answers.formFactor.bayCount === 'auto') {
-    // Auto-determine based on storage needs
     if (totalRequiredTB <= 8) maxBays = 2;
     else if (totalRequiredTB <= 32) maxBays = 4;
     else if (totalRequiredTB <= 64) maxBays = 6;
@@ -77,28 +79,20 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     maxBays = answers.formFactor.bayCount;
   }
 
-  // 3. Select RAID type
-  const raidType = selectRaidType(
-    answers.reliability.raidType,
-    maxBays,
-    answers.reliability.criticality,
-    answers.useCases
-  );
+  // 3. Determine abstract requirements
+  const cpu = determineCpuRequirements(answers);
+  const ram = determineRamRequirements(answers);
+  const storage = determineStorageRequirements(totalRequiredTB, maxBays, answers);
+  const ssdCache = determineSsdCache(answers);
+  const transcoding = determineTranscoding(answers);
+  const ai = determineAiRequirements(answers);
+  const network = determineNetworkRequirements(answers);
+  const formFactor = determineFormFactor(storage.driveCount, answers);
 
-  // 4. Select drives
-  const hasSurveillance = answers.useCases.includes('surveillance');
-  const { drives, driveCount, driveSizeTB } = selectDrives(
-    totalRequiredTB,
-    raidType,
-    maxBays,
-    hasSurveillance
-  );
+  // 4. Storage breakdown (visual)
+  const usableTiB = calcRaidCapacity(storage.driveCount, storage.minDriveSizeTB, storage.raidType);
+  const rawTB = storage.driveCount * storage.minDriveSizeTB;
 
-  // 5. Calculate actual RAID capacity
-  const usableTiB = calcRaidCapacity(driveCount, driveSizeTB, raidType);
-  const rawTB = driveCount * driveSizeTB;
-
-  // 6. Build storage breakdown
   const allocations: StorageAllocation[] = [];
   if (surveillanceTB > 0) {
     allocations.push({ label: 'Видеонаблюдение', sizeTB: surveillanceTB, color: '#ef4444' });
@@ -127,82 +121,70 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     usableTiB,
     allocations,
     freeTiB,
-    raidType: raidType as any,
-    driveCount,
-    driveSizeTB,
+    raidType: storage.raidType as any,
+    driveCount: storage.driveCount,
+    driveSizeTB: storage.minDriveSizeTB,
   };
 
-  // 7. Select components
-  const cpuScore = calcCpuScore(answers);
-  const motherboard = selectMotherboard(cpuScore, answers);
-  const ramGB = calcRamGB(answers);
-  const ssdCache = selectSSDCache(answers);
-  const nasCase = selectCase(
-    driveCount,
-    motherboard.form_factor,
-    answers.formFactor.placement,
-    answers.formFactor.noiseLevel
-  );
-
-  // 8. Power & PSU
-  const has10gbe = motherboard.eth_10g > 0;
-  const totalPowerW = calcPowerWatts({
-    motherboard,
-    drives,
-    ssdCache,
-    ramGB,
-    has10gbe,
+  // 5. Power & PSU
+  const estimatedPowerW = estimatePowerWatts({
+    cpuTier: cpu.tier,
+    cpuTdpMax: cpu.tdpRange[1],
+    driveCount: storage.driveCount,
+    driveSizeTB: storage.minDriveSizeTB,
+    ssdCacheCount: ssdCache?.count || 0,
+    ramGB: ram.minGB,
+    has10gbe: network.need10gbe,
   });
-  const psu = selectPSU(totalPowerW);
-  const needUps = answers.formFactor.needUps || shouldRecommendUPS(answers);
-  const ups = needUps ? selectUPS(totalPowerW) : null;
+  const psu = determinePsu(estimatedPowerW);
 
-  // 9. Price breakdown
-  const priceBreakdown = calcPriceBreakdown({
-    nasCase,
-    motherboard,
-    ramGB,
-    drives,
-    ssdCache,
-    psuPrice: psu.price_rub,
-    upsPrice: ups?.price_rub || null,
+  // 6. UPS
+  const ups = determineUps(estimatedPowerW, answers);
+
+  // 7. Price estimate
+  const priceEstimate = calcPriceEstimate({
+    cpuTier: cpu.tier,
+    ramGB: ram.minGB,
+    driveCount: storage.driveCount,
+    driveSizeTB: storage.minDriveSizeTB,
+    driveClass: storage.driveClass,
+    ssdCacheCount: ssdCache?.count || 0,
+    ssdMinCapacityGB: ssdCache?.minCapacityGB || 0,
+    psuWatts: psu.recommendedWatts,
+    upsMinVA: ups?.minVA || null,
+    maxMbFormFactor: formFactor.maxMbFormFactor,
+    driveSlots: formFactor.minBays35,
   });
 
-  // 10. Synology comparison
+  // 8. Synology comparison
   const cameras = answers.surveillance?.cameras || 0;
   const synologyComparison = findClosestSynology({
-    requiredBays: driveCount,
-    ramGB,
+    requiredBays: storage.driveCount,
+    ramGB: ram.minGB,
     cameras,
-    has10gbe,
-    driveCostTotal: priceBreakdown.drives,
-    xpenologyTotal: priceBreakdown.total,
+    has10gbe: network.need10gbe,
+    driveCostRange: priceEstimate.drives,
+    xpenologyTotalRange: priceEstimate.totalRange,
   });
 
-  // 11. Generate explanations
-  const explanations: Record<string, string> = {};
-  explanations.cpu = `${motherboard.cpu} (оценка нагрузки: ${cpuScore}/10)${motherboard.quicksync ? ' — аппаратный транскодинг Quick Sync' : ''}`;
-  explanations.ram = `${ramGB} ГБ — ${ramGB <= 8 ? 'достаточно для базовых задач' : ramGB <= 16 ? 'оптимально для Docker и мультизадачности' : 'необходимо для VM и тяжёлых нагрузок'}`;
-  explanations.raid = `${raidType.toUpperCase()} — ${raidType === 'shr' ? 'гибкий RAID, легко расширять' : raidType === 'shr-2' ? 'двойная избыточность для критичных данных' : raidType === 'raid1' ? 'зеркалирование для 2 дисков' : raidType === 'raid10' ? 'производительность + надёжность' : 'оптимальный для вашей конфигурации'}`;
-  explanations.drives = `${driveCount}× ${drives[0].name} — ${drives[0].type === 'surveillance' ? 'оптимизированы для записи видео 24/7' : drives[0].type === 'enterprise' ? 'серверного класса, повышенная надёжность' : 'серия NAS, оптимальны для RAID-массивов'}`;
-
-  // 12. RAM module description
-  const ramModules = `${ramGB} ГБ ${motherboard.ram_type}`;
+  // 9. Educational insights
+  const insights = selectInsights(answers);
 
   return {
-    case: nasCase,
-    motherboard,
-    ramGB,
-    ramModules,
-    drives,
+    cpu,
+    ram,
+    storage,
     ssdCache,
-    psuWatts: psu.watts,
-    ups: ups?.name || null,
-    totalPowerW,
-    raidType,
+    transcoding,
+    ai,
+    network,
+    psu,
+    ups,
+    formFactor,
     storageBreakdown,
-    priceBreakdown,
+    priceEstimate,
     synologyComparison,
-    explanations,
+    insights,
+    estimatedPowerW,
   };
 }

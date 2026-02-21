@@ -1,37 +1,50 @@
-import type { NASConfig } from '../types/config';
-import type { Motherboard, DriveHDD, DriveSSD } from '../types/components';
-import profilesData from '../data/profiles.json';
+import type { CpuTier, PsuRequirements } from '../types/config';
 
-export function calcPowerWatts(params: {
-  motherboard: Motherboard;
-  drives: DriveHDD[];
-  ssdCache: DriveSSD[];
+interface PowerEstimateParams {
+  cpuTier: CpuTier;
+  cpuTdpMax: number;
+  driveCount: number;
+  driveSizeTB: number;
+  ssdCacheCount: number;
   ramGB: number;
   has10gbe: boolean;
-}): number {
+}
+
+export function estimatePowerWatts(params: PowerEstimateParams): number {
   let power = 0;
 
-  power += params.motherboard.tdp_w;
-  power += params.drives.reduce((sum, d) => sum + d.power_w, 0);
-  power += params.ssdCache.reduce((sum, d) => sum + d.power_w, 0);
+  // CPU — use TDP max as base, idle is typically 30-50% of TDP
+  power += params.cpuTdpMax * 0.7;
+
+  // HDDs: ~5-9W each depending on size
+  const hddPower = params.driveSizeTB >= 12 ? 9 : params.driveSizeTB >= 8 ? 7 : 5;
+  power += params.driveCount * hddPower;
+
+  // NVMe SSDs: ~5W each
+  power += params.ssdCacheCount * 5;
+
+  // RAM: ~0.3W per GB
   power += params.ramGB * 0.3;
+
+  // Network
   power += params.has10gbe ? 10 : 2;
-  power += 15; // Fans, misc
 
-  return power;
+  // Fans, misc
+  power += 15;
+
+  return Math.round(power);
 }
 
-export function selectPSU(powerWatts: number): { watts: number; name: string; price_rub: number } {
-  const withHeadroom = powerWatts * 1.3;
-  const psuModels = profilesData.psu_models;
+export function determinePsu(totalPowerW: number): PsuRequirements {
+  const minWatts = Math.round(totalPowerW * 1.3);
+  // Round up to nearest standard size
+  const standardSizes = [200, 250, 300, 350, 450, 550];
+  const recommendedWatts = standardSizes.find((s) => s >= minWatts) || 550;
 
-  const suitable = psuModels.find((p) => p.watts >= withHeadroom);
-  return suitable || psuModels[psuModels.length - 1];
-}
-
-export function selectUPS(powerWatts: number): { name: string; price_rub: number } {
-  const upsModels = profilesData.ups_models;
-  // Pick smallest UPS that can handle the load for ~15 min
-  if (powerWatts > 400) return upsModels[1]; // 1100VA
-  return upsModels[0]; // 650VA
+  return {
+    minWatts,
+    recommendedWatts,
+    efficiency: '80+ Gold',
+    explanation: `БП от ${recommendedWatts} Вт, 80+ Gold. Расчётное потребление ~${totalPowerW} Вт. Для 24/7 системы КПД и надёжность важнее мощности — не берите 800 Вт для системы на ${totalPowerW} Вт.`,
+  };
 }

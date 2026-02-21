@@ -1,18 +1,23 @@
 import { motion } from 'framer-motion';
-import type { PriceBreakdown } from '../../types/config';
+import type { PriceEstimate } from '../../types/config';
 import { formatPrice } from '../../utils/formatters';
 
 interface PriceTableProps {
-  breakdown: PriceBreakdown;
+  estimate: PriceEstimate;
 }
 
-export function PriceTable({ breakdown }: PriceTableProps) {
+function formatRange(min: number, max: number): string {
+  if (min === max) return formatPrice(min);
+  return `${formatPrice(min)} – ${formatPrice(max)}`;
+}
+
+export function PriceTable({ estimate }: PriceTableProps) {
   const rows = [
-    { label: 'Железо (корпус + плата + RAM + БП)', value: breakdown.hardware },
-    { label: 'Диски HDD', value: breakdown.drives },
-    ...(breakdown.ssdCache > 0 ? [{ label: 'SSD-кэш', value: breakdown.ssdCache }] : []),
-    { label: 'Доп. оборудование (UPS, кабели)', value: breakdown.accessories },
-    { label: 'Сборка и настройка', value: breakdown.assembly },
+    { label: 'Железо (корпус + плата + CPU + RAM + БП)', range: estimate.hardware },
+    { label: 'Диски HDD', range: estimate.drives },
+    ...(estimate.ssdCache ? [{ label: 'SSD-кэш', range: estimate.ssdCache }] : []),
+    { label: 'Доп. оборудование (ИБП, кабели)', range: estimate.accessories },
+    { label: 'Сборка и настройка', range: { min: estimate.assembly, max: estimate.assembly } },
   ];
 
   return (
@@ -23,22 +28,23 @@ export function PriceTable({ breakdown }: PriceTableProps) {
       className="bg-bg-card rounded-xl border border-border overflow-hidden"
     >
       <div className="px-5 py-3 border-b border-border">
-        <h3 className="text-lg font-bold text-text-primary">Стоимость</h3>
+        <h3 className="text-lg font-bold text-text-primary">Оценка стоимости</h3>
+        <p className="text-xs text-text-muted mt-0.5">Диапазон цен без привязки к конкретным брендам</p>
       </div>
 
       <div className="divide-y divide-border">
         {rows.map((row, idx) => (
           <div key={idx} className="px-5 py-2.5 flex justify-between items-center">
             <span className="text-sm text-text-secondary">{row.label}</span>
-            <span className="text-sm font-mono text-text-primary">{formatPrice(row.value)}</span>
+            <span className="text-sm font-mono text-text-primary">{formatRange(row.range.min, row.range.max)}</span>
           </div>
         ))}
       </div>
 
       <div className="px-5 py-3 bg-accent/10 border-t border-border flex justify-between items-center">
-        <span className="text-base font-bold text-text-primary">ИТОГО</span>
+        <span className="text-base font-bold text-text-primary">ИТОГО (диапазон)</span>
         <span className="text-lg font-bold font-mono text-accent-light">
-          {formatPrice(breakdown.total)}
+          {formatRange(estimate.totalRange.min, estimate.totalRange.max)}
         </span>
       </div>
     </motion.div>

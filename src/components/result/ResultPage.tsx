@@ -4,6 +4,7 @@ import { ConfigCard } from './ConfigCard';
 import { StorageBreakdown } from './StorageBreakdown';
 import { PriceTable } from './PriceTable';
 import { SynologyComparison } from './SynologyComparison';
+import { InsightsSection } from './InsightsSection';
 import { ServicesList } from './ServicesList';
 import { PdfExport } from './PdfExport';
 import { Button } from '../ui/Button';
@@ -39,8 +40,9 @@ export function ResultPage() {
     >
       <ConfigCard config={result} />
       <StorageBreakdown breakdown={result.storageBreakdown} />
-      <PriceTable breakdown={result.priceBreakdown} />
+      <PriceTable estimate={result.priceEstimate} />
       <SynologyComparison comparison={result.synologyComparison} />
+      <InsightsSection insights={result.insights} />
       <ServicesList />
 
       <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-border">

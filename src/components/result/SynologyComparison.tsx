@@ -7,7 +7,7 @@ interface SynologyComparisonProps {
 }
 
 export function SynologyComparison({ comparison }: SynologyComparisonProps) {
-  const savingsPositive = comparison.savings > 0;
+  const savingsPositive = comparison.savings.min > 0;
 
   return (
     <motion.div
@@ -42,13 +42,7 @@ export function SynologyComparison({ comparison }: SynologyComparisonProps) {
                 </div>
               )}
               <div className="flex justify-between text-xs font-bold pt-1 border-t border-border">
-                <span>Итого (без дисков)</span>
-                <span className="font-mono">{formatPrice(comparison.synologyTotal - comparison.xpenologyTotal + comparison.savings + comparison.model.price_rub + comparison.licenseCost - comparison.model.price_rub - comparison.licenseCost)}</span>
-              </div>
-            </div>
-            <div className="text-xs font-bold pt-1">
-              <div className="flex justify-between">
-                <span>Итого Synology</span>
+                <span>Итого Synology + диски</span>
                 <span className="font-mono">{formatPrice(comparison.synologyTotal)}</span>
               </div>
             </div>
@@ -64,8 +58,8 @@ export function SynologyComparison({ comparison }: SynologyComparisonProps) {
             </div>
             <div className="pt-2 border-t border-accent/20">
               <div className="flex justify-between text-xs font-bold">
-                <span>Итого Xpenology</span>
-                <span className="font-mono text-accent-light">{formatPrice(comparison.xpenologyTotal)}</span>
+                <span>Итого Xpenology (оценка)</span>
+                <span className="font-mono text-accent-light">~{formatPrice(comparison.estimatedXpenologyTotal)}</span>
               </div>
             </div>
           </div>
@@ -74,7 +68,7 @@ export function SynologyComparison({ comparison }: SynologyComparisonProps) {
         {savingsPositive && (
           <div className="bg-success/10 border border-success/30 rounded-lg p-3 text-center">
             <span className="text-success font-bold text-lg">
-              Экономия: {formatPrice(comparison.savings)}
+              Экономия: {formatPrice(comparison.savings.min)} – {formatPrice(comparison.savings.max)}
             </span>
             <p className="text-xs text-success/70 mt-1">
               + безлимит камер + больше RAM + полный контроль
@@ -87,7 +81,7 @@ export function SynologyComparison({ comparison }: SynologyComparisonProps) {
             <div className="text-xs text-text-muted mb-1">Ограничения Synology:</div>
             {comparison.limitations.map((lim, idx) => (
               <div key={idx} className="flex items-start gap-2 text-xs text-warning">
-                <span className="shrink-0">⚠️</span>
+                <span className="shrink-0">!</span>
                 <span>{lim}</span>
               </div>
             ))}

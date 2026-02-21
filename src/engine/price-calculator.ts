@@ -1,29 +1,112 @@
-import type { PriceBreakdown } from '../types/config';
-import type { NASCase, Motherboard, DriveHDD, DriveSSD } from '../types/components';
+import type { PriceEstimate, PriceRange, CpuTier, DriveClass } from '../types/config';
 import profilesData from '../data/profiles.json';
 
-export function calcPriceBreakdown(params: {
-  nasCase: NASCase;
-  motherboard: Motherboard;
+interface PriceEstimateParams {
+  cpuTier: CpuTier;
   ramGB: number;
-  drives: DriveHDD[];
-  ssdCache: DriveSSD[];
-  psuPrice: number;
-  upsPrice: number | null;
-}): PriceBreakdown {
-  const ramPrices = profilesData.ram_prices_rub as Record<string, number>;
-  const ramPrice = ramPrices[String(params.ramGB)] || ramPrices['32'];
+  driveCount: number;
+  driveSizeTB: number;
+  driveClass: DriveClass;
+  ssdCacheCount: number;
+  ssdMinCapacityGB: number;
+  psuWatts: number;
+  upsMinVA: number | null;
+  maxMbFormFactor: string;
+  driveSlots: number;
+}
 
-  const hardware =
-    params.nasCase.price_rub +
-    params.motherboard.price_rub +
-    ramPrice +
-    params.psuPrice;
+// Approximate market price ranges (no specific brands)
+const CPU_BOARD_PRICES: Record<CpuTier, PriceRange> = {
+  basic: { min: 8000, max: 15000 },
+  mid: { min: 14000, max: 25000 },
+  heavy: { min: 22000, max: 35000 },
+  server: { min: 35000, max: 60000 },
+};
 
-  const drives = params.drives.reduce((sum, d) => sum + d.price_rub, 0);
-  const ssdCache = params.ssdCache.reduce((sum, d) => sum + d.price_rub, 0);
-  const accessories = (params.upsPrice || 0) + 2000; // Cables, SATA cables, screws, etc.
+const CASE_PRICES: Record<string, PriceRange> = {
+  '2-4': { min: 5000, max: 12000 },
+  '5-6': { min: 8000, max: 16000 },
+  '8': { min: 12000, max: 20000 },
+  '12': { min: 12000, max: 25000 },
+};
+
+const RAM_PRICES_PER_GB: PriceRange = { min: 400, max: 700 };
+
+const PSU_PRICES: Record<string, PriceRange> = {
+  '200': { min: 3000, max: 5000 },
+  '250': { min: 4000, max: 6000 },
+  '300': { min: 4500, max: 7000 },
+  '350': { min: 5000, max: 8000 },
+  '450': { min: 7000, max: 11000 },
+  '550': { min: 9000, max: 14000 },
+};
+
+// HDD price per TB ranges by class
+const HDD_PRICE_PER_TB: Record<DriveClass, PriceRange> = {
+  nas: { min: 1800, max: 2500 },
+  surveillance: { min: 1900, max: 2700 },
+  enterprise: { min: 1500, max: 2200 },
+};
+
+// NVMe SSD price per 250GB
+const SSD_PRICE_PER_250GB: PriceRange = { min: 3500, max: 6000 };
+
+function addRanges(...ranges: PriceRange[]): PriceRange {
+  return {
+    min: ranges.reduce((sum, r) => sum + r.min, 0),
+    max: ranges.reduce((sum, r) => sum + r.max, 0),
+  };
+}
+
+function scaleRange(range: PriceRange, factor: number): PriceRange {
+  return { min: Math.round(range.min * factor), max: Math.round(range.max * factor) };
+}
+
+export function calcPriceEstimate(params: PriceEstimateParams): PriceEstimate {
+  // Hardware: case + board/CPU + RAM + PSU
+  const boardPrice = CPU_BOARD_PRICES[params.cpuTier];
+
+  const caseKey = params.driveSlots <= 4 ? '2-4' : params.driveSlots <= 6 ? '5-6' : params.driveSlots <= 8 ? '8' : '12';
+  const casePrice = CASE_PRICES[caseKey];
+
+  const ramPrice = scaleRange(RAM_PRICES_PER_GB, params.ramGB);
+
+  const psuKey = String(params.psuWatts);
+  const psuPrice = PSU_PRICES[psuKey] || PSU_PRICES['350'];
+
+  const hardware = addRanges(boardPrice, casePrice, ramPrice, psuPrice);
+
+  // Drives
+  const hddPricePerTB = HDD_PRICE_PER_TB[params.driveClass];
+  const drives = scaleRange(hddPricePerTB, params.driveCount * params.driveSizeTB);
+
+  // SSD cache
+  let ssdCache: PriceRange | null = null;
+  if (params.ssdCacheCount > 0) {
+    const ssdMultiplier = params.ssdCacheCount * (params.ssdMinCapacityGB / 250);
+    ssdCache = scaleRange(SSD_PRICE_PER_250GB, ssdMultiplier);
+  }
+
+  // Accessories: UPS + cables
+  let accessories: PriceRange = { min: 1500, max: 3000 };
+  if (params.upsMinVA) {
+    const upsPrice: PriceRange = params.upsMinVA <= 650
+      ? { min: 6000, max: 10000 }
+      : params.upsMinVA <= 1100
+        ? { min: 9000, max: 15000 }
+        : { min: 14000, max: 22000 };
+    accessories = addRanges(accessories, upsPrice);
+  }
+
   const assembly = profilesData.assembly_price_rub;
+
+  const totalRange = addRanges(
+    hardware,
+    drives,
+    ssdCache || { min: 0, max: 0 },
+    accessories,
+    { min: assembly, max: assembly },
+  );
 
   return {
     hardware,
@@ -31,6 +114,10 @@ export function calcPriceBreakdown(params: {
     ssdCache,
     accessories,
     assembly,
-    total: hardware + drives + ssdCache + accessories + assembly,
+    totalRange,
   };
+}
+
+export function estimateMidpoint(range: PriceRange): number {
+  return Math.round((range.min + range.max) / 2);
 }

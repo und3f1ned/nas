@@ -1,32 +1,41 @@
-import type { SynologyComparison } from '../types/config';
-import type { SynologyModel } from '../types/components';
+import type { SynologyComparison, PriceRange } from '../types/config';
 import componentsCatalog from '../data/components.json';
 import profilesData from '../data/profiles.json';
+
+interface SynologyModel {
+  model: string;
+  bays: number;
+  cpu: string;
+  ram_gb: number;
+  max_ram_gb: number;
+  max_cameras: number;
+  network: string;
+  price_rub: number;
+  has_10gbe?: boolean;
+  notes?: string;
+}
 
 export function findClosestSynology(params: {
   requiredBays: number;
   ramGB: number;
   cameras: number;
   has10gbe: boolean;
-  driveCostTotal: number;
-  xpenologyTotal: number;
+  driveCostRange: PriceRange;
+  xpenologyTotalRange: PriceRange;
 }): SynologyComparison {
   const models = componentsCatalog.synology_models as SynologyModel[];
 
-  // Find closest Synology model with >= required bays
   const candidates = models
     .filter((m) => m.bays >= params.requiredBays)
     .sort((a, b) => a.price_rub - b.price_rub);
 
   const bestMatch = candidates[0] || models[models.length - 1];
 
-  // Calculate license cost for surveillance cameras
   const camerasOverDefault = Math.max(0, params.cameras - profilesData.surveillance_free_cameras);
   const licenseCost = camerasOverDefault * profilesData.surveillance_license_cost_rub;
 
-  const synologyTotal = bestMatch.price_rub + params.driveCostTotal + licenseCost;
+  const synologyTotal = bestMatch.price_rub + ((params.driveCostRange.min + params.driveCostRange.max) / 2) + licenseCost;
 
-  // Collect limitations
   const limitations: string[] = [];
 
   if (params.cameras > profilesData.surveillance_free_cameras) {
@@ -49,12 +58,17 @@ export function findClosestSynology(params: {
 
   limitations.push('Закрытая экосистема, ограниченная модернизация');
 
+  const estimatedXpenologyMid = Math.round((params.xpenologyTotalRange.min + params.xpenologyTotalRange.max) / 2);
+
   return {
     model: bestMatch,
-    synologyTotal,
+    synologyTotal: Math.round(synologyTotal),
     licenseCost,
-    xpenologyTotal: params.xpenologyTotal,
-    savings: synologyTotal - params.xpenologyTotal,
-  limitations,
+    estimatedXpenologyTotal: estimatedXpenologyMid,
+    savings: {
+      min: Math.round(synologyTotal - params.xpenologyTotalRange.max),
+      max: Math.round(synologyTotal - params.xpenologyTotalRange.min),
+    },
+    limitations,
   };
 }

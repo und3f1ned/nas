@@ -1,7 +1,21 @@
 import type { WizardAnswers } from '../types/wizard';
-import type { NASCase, Motherboard, DriveHDD, DriveSSD } from '../types/components';
-import componentsCatalog from '../data/components.json';
-import { calcRaidCapacity, minDrivesForRaid } from './storage-calculator';
+import type {
+  CpuRequirements,
+  CpuTier,
+  RamRequirements,
+  EccRecommendation,
+  StorageRequirements,
+  DriveClass,
+  SsdCacheRequirements,
+  TranscodingRequirements,
+  AiRequirements,
+  NetworkRequirements,
+  FormFactorRequirements,
+  UpsRequirements,
+} from '../types/config';
+import { calcRaidCapacity, minDrivesForRaid, selectRaidType } from './storage-calculator';
+
+// ─── CPU ───
 
 export function calcCpuScore(answers: WizardAnswers): number {
   let score = 0;
@@ -35,115 +49,129 @@ export function calcCpuScore(answers: WizardAnswers): number {
   return score;
 }
 
-export function calcRamGB(answers: WizardAnswers): number {
-  let ram = 4; // Base DSM
+export function determineCpuRequirements(answers: WizardAnswers): CpuRequirements {
+  const score = calcCpuScore(answers);
+  const needsQuickSync = answers.useCases.includes('media') && answers.media?.transcoding !== 'none';
+  const is4k = answers.media?.transcoding === '4k';
+
+  let tier: CpuTier;
+  let minCores: number;
+  let minThreads: number;
+  let tdpRange: [number, number];
+  let explanation: string;
+
+  if (score <= 2) {
+    tier = 'basic';
+    minCores = 2;
+    minThreads = 4;
+    tdpRange = [10, 25];
+    explanation = 'Достаточно энергоэффективного 2-4 ядерного CPU (10-25 Вт TDP). Файловое хранилище и бэкапы не требуют вычислительной мощности.';
+  } else if (score <= 5) {
+    tier = 'mid';
+    minCores = 4;
+    minThreads = 8;
+    tdpRange = [15, 35];
+    explanation = 'Нужен 4-ядерный CPU с 8 потоками. Достаточно для Docker, транскодинга 1080p и умеренной многозадачности.';
+  } else if (score <= 8) {
+    tier = 'heavy';
+    minCores = 6;
+    minThreads = 12;
+    tdpRange = [25, 65];
+    explanation = 'Требуется 6+ ядерный CPU. Тяжёлые Docker-контейнеры, 4K транскодинг, виртуальные машины нуждаются в серьёзной вычислительной мощности.';
+  } else {
+    tier = 'server';
+    minCores = 8;
+    minThreads = 16;
+    tdpRange = [65, 125];
+    explanation = 'Серверный класс: 8+ ядер. Множество VM, бизнес-нагрузка на 15+ пользователей, одновременный транскодинг и AI.';
+  }
+
+  if (needsQuickSync) {
+    explanation += ' Обязательна поддержка Intel QuickSync для аппаратного транскодинга.';
+  }
+
+  return {
+    tier,
+    minCores,
+    minThreads,
+    needsQuickSync,
+    minQuickSyncGen: needsQuickSync
+      ? (is4k ? 'Kaby Lake (7th gen) и новее — для HEVC 10-bit (4K HDR)' : 'Skylake (6th gen) и новее — для HEVC 8-bit')
+      : null,
+    tdpRange,
+    explanation,
+  };
+}
+
+// ─── RAM ───
+
+export function determineRamRequirements(answers: WizardAnswers): RamRequirements {
+  let ram = 4;
 
   if (answers.useCases.includes('surveillance') && answers.surveillance) {
     ram += Math.ceil(answers.surveillance.cameras / 8) * 0.5;
   }
-
   if (answers.useCases.includes('docker') && answers.docker) {
     ram += Math.max(answers.docker.heavyServices.length * 1, 2);
   }
-
   if (answers.useCases.includes('vm') && answers.vm) {
     ram += answers.vm.count * 4;
   }
-
   if (answers.useCases.includes('business') && answers.business) {
     ram += Math.ceil(answers.business.users / 10) * 1;
   }
-
   if (answers.useCases.includes('media') && answers.media && answers.media.transcoding !== 'none') {
     ram += 2;
   }
-
   if (answers.reliability.ssdCache) {
     ram += 1;
   }
 
-  // Round to standard size
   const sizes = [4, 8, 16, 32, 64];
-  return sizes.find((s) => s >= ram) || 64;
-}
+  const minGB = sizes.find((s) => s >= ram) || 64;
+  const recommendedGB = sizes.find((s) => s >= ram * 1.5) || 64;
 
-export function selectMotherboard(cpuScore: number, answers: WizardAnswers): Motherboard {
-  const boards = componentsCatalog.motherboards as Motherboard[];
-  const needs10gbe = answers.network.currentSpeed === '10gbe' || answers.network.needUpgrade;
-  const needsQuickSync = answers.useCases.includes('media') && answers.media?.transcoding !== 'none';
-
-  // Filter compatible boards
-  const candidates = boards.filter((b) => {
-    if (needsQuickSync && !b.quicksync) return false;
-    return b.xpenology_compat !== 'unknown';
-  });
-
-  // Sort by closest cpu_score match (prefer not underpowered)
-  candidates.sort((a, b) => {
-    const diffA = a.cpu_score - cpuScore;
-    const diffB = b.cpu_score - cpuScore;
-    // Prefer boards at or above required score
-    if (diffA >= 0 && diffB < 0) return -1;
-    if (diffA < 0 && diffB >= 0) return 1;
-    return Math.abs(diffA) - Math.abs(diffB);
-  });
-
-  // Prefer 10GbE if needed
-  if (needs10gbe) {
-    const with10g = candidates.find((b) => b.eth_10g > 0);
-    if (with10g) return with10g;
+  let eccRecommendation: EccRecommendation = 'not_needed';
+  if (answers.reliability.criticality === 'mission_critical' || answers.useCases.includes('business')) {
+    eccRecommendation = 'strongly_recommended';
+  } else if (answers.reliability.criticality === 'high' || answers.useCases.includes('vm')) {
+    eccRecommendation = 'recommended';
   }
 
-  return candidates[0] || boards[0];
+  const explanation = minGB <= 8
+    ? `${minGB} ГБ — достаточно для базовых задач (файлы, бэкапы, лёгкий Docker)`
+    : minGB <= 16
+      ? `${minGB} ГБ — оптимально для Docker, транскодинга и мультизадачности`
+      : `${minGB} ГБ — необходимо для VM и тяжёлых нагрузок. При возможности ставьте ${recommendedGB} ГБ`;
+
+  return { minGB, recommendedGB, eccRecommendation, explanation };
 }
 
-export function selectCase(
-  requiredBays: number,
-  mbFormFactor: string,
-  placement: string,
-  noiseLevel: string
-): NASCase {
-  const cases = componentsCatalog.cases as NASCase[];
+// ─── Storage ───
 
-  const compatible = cases.filter((c) => {
-    if (c.bays_35 < requiredBays) return false;
-    if (!c.available) return false;
-    // Form factor compatibility
-    if (mbFormFactor === 'atx' && c.max_mb !== 'atx') return false;
-    if (mbFormFactor === 'mini-dtx' && c.max_mb === 'mini-itx') return false;
-    // Placement preference
-    if (placement === 'rack' && !c.form_factor.includes('rack')) return false;
-    if (placement === 'home' && c.form_factor.includes('rack')) return false;
-    // Noise preference
-    if (noiseLevel === 'quiet' && c.noise_level === 'high') return false;
-    return true;
-  });
-
-  // Sort by price (cheapest suitable)
-  compatible.sort((a, b) => a.price_rub - b.price_rub);
-
-  return compatible[0] || cases[0];
-}
-
-export function selectDrives(
+export function determineStorageRequirements(
   totalRequiredTB: number,
-  raidType: string,
   maxBays: number,
-  hasSurveillance: boolean
-): { drives: DriveHDD[]; driveCount: number; driveSizeTB: number } {
-  const hddCatalog = componentsCatalog.drives_hdd as DriveHDD[];
-  const standardSizes = [...new Set(hddCatalog.map((d) => d.capacity_tb))].sort((a, b) => a - b);
+  answers: WizardAnswers,
+): StorageRequirements {
+  const raidType = selectRaidType(
+    answers.reliability.raidType,
+    maxBays,
+    answers.reliability.criticality,
+    answers.useCases,
+  );
 
+  const hasSurveillance = answers.useCases.includes('surveillance');
   const minDrives = minDrivesForRaid(raidType);
-  const effectiveMaxBays = Math.min(maxBays, 12);
+  const standardSizes = [4, 8, 12, 16, 20];
 
   let bestDriveSize = standardSizes[0];
   let bestDriveCount = minDrives;
 
   for (const size of standardSizes) {
-    for (let count = minDrives; count <= effectiveMaxBays; count++) {
+    for (let count = minDrives; count <= Math.min(maxBays, 12); count++) {
       const usable = calcRaidCapacity(count, size, raidType);
-      if (usable * 1.1 >= totalRequiredTB) { // TiB to approximate TB
+      if (usable * 1.1 >= totalRequiredTB) {
         bestDriveSize = size;
         bestDriveCount = count;
         break;
@@ -154,44 +182,136 @@ export function selectDrives(
     }
   }
 
-  // Pick the right drive model
-  const preferredType = hasSurveillance ? 'surveillance' : 'nas';
-  let selectedDrive = hddCatalog.find(
-    (d) => d.capacity_tb === bestDriveSize && d.type === preferredType
-  );
-  if (!selectedDrive) {
-    selectedDrive = hddCatalog.find((d) => d.capacity_tb === bestDriveSize);
-  }
-  if (!selectedDrive) {
-    // Fallback: find closest size
-    selectedDrive = hddCatalog
-      .filter((d) => d.capacity_tb >= bestDriveSize)
-      .sort((a, b) => a.capacity_tb - b.capacity_tb)[0] || hddCatalog[hddCatalog.length - 1];
-    bestDriveSize = selectedDrive.capacity_tb;
+  let driveClass: DriveClass = 'nas';
+  if (hasSurveillance) driveClass = 'surveillance';
+  if (answers.useCases.includes('business') && answers.business && answers.business.users > 15) {
+    driveClass = 'enterprise';
   }
 
-  const drives = Array(bestDriveCount).fill(selectedDrive);
+  const classLabel = driveClass === 'nas' ? 'NAS-класса'
+    : driveClass === 'surveillance' ? 'для видеонаблюдения (24/7 запись)'
+      : 'Enterprise-класса';
 
-  return { drives, driveCount: bestDriveCount, driveSizeTB: bestDriveSize };
+  return {
+    driveCount: bestDriveCount,
+    minDriveSizeTB: bestDriveSize,
+    raidType,
+    driveClass,
+    cmrRequired: true,
+    tlerRequired: true,
+    explanation: `${bestDriveCount}× HDD от ${bestDriveSize} ТБ, ${classLabel}. ${raidType.toUpperCase()} — ${raidType === 'raid1' ? 'зеркалирование' : raidType.includes('shr-2') || raidType === 'raid6' ? 'двойная защита от потери 2 дисков' : 'защита от потери одного диска'}. Только CMR с TLER/ERC!`,
+  };
 }
 
-export function selectSSDCache(answers: WizardAnswers): DriveSSD[] {
-  if (!answers.reliability.ssdCache) return [];
+// ─── SSD Cache ───
 
-  const ssds = componentsCatalog.drives_ssd as DriveSSD[];
-  // Pick cheapest NVMe option, return 2 for read/write cache
-  const cheapest = [...ssds].sort((a, b) => a.price_rub - b.price_rub)[0];
-  return cheapest ? [cheapest, cheapest] : [];
+export function determineSsdCache(answers: WizardAnswers): SsdCacheRequirements | null {
+  if (!answers.reliability.ssdCache) return null;
+
+  const isHeavy = answers.useCases.includes('vm') ||
+    (answers.useCases.includes('docker') && answers.docker?.containerRange === '15+');
+  const minCapacityGB = isHeavy ? 500 : 250;
+  const minTBW = isHeavy ? 600 : 300;
+
+  return {
+    count: 2,
+    minCapacityGB,
+    interface: 'nvme',
+    minNandType: 'tlc',
+    dramRequired: true,
+    minTBW,
+    explanation: `2× NVMe SSD от ${minCapacityGB} ГБ для кэша чтения/записи. Обязательно: TLC NAND (не QLC!), DRAM-буфер, TBW от ${minTBW}+.`,
+  };
 }
 
-export function shouldRecommendSSDCache(answers: WizardAnswers): boolean {
-  return (
-    answers.useCases.includes('docker') ||
-    answers.useCases.includes('vm') ||
-    answers.useCases.includes('business') ||
-    (answers.useCases.includes('media') && answers.media?.transcoding !== 'none')
-  );
+// ─── Transcoding ───
+
+export function determineTranscoding(answers: WizardAnswers): TranscodingRequirements | null {
+  if (!answers.useCases.includes('media') || answers.media?.transcoding === 'none') return null;
+
+  const is4k = answers.media?.transcoding === '4k';
+  const codecs = ['h264'];
+  if (is4k) {
+    codecs.push('hevc_10bit');
+  } else {
+    codecs.push('hevc_8bit');
+  }
+
+  return {
+    needed: true,
+    method: 'quicksync',
+    minCodecSupport: codecs,
+    explanation: is4k
+      ? 'Аппаратный транскодинг 4K HDR (HEVC 10-bit). Intel QuickSync от Kaby Lake (7th gen) — лучший вариант по энергоэффективности. Альтернатива: NVIDIA NVENC (RTX 2000+).'
+      : 'Аппаратный транскодинг 1080p. Intel QuickSync от Skylake (6th gen). Даже дешёвый N100 обрабатывает несколько 1080p потоков.',
+  };
 }
+
+// ─── AI ───
+
+export function determineAiRequirements(answers: WizardAnswers): AiRequirements | null {
+  const hasFrigate = answers.useCases.includes('docker') &&
+    answers.docker?.heavyServices.includes('frigate');
+  const hasSurveillancePlus = answers.useCases.includes('surveillance') &&
+    answers.surveillance && answers.surveillance.cameras > 4;
+
+  if (!hasFrigate && !hasSurveillancePlus) return null;
+
+  const useCases: string[] = [];
+  if (hasFrigate) useCases.push('Frigate NVR — детекция объектов');
+  if (hasSurveillancePlus) useCases.push('Распознавание для камер');
+
+  return {
+    needed: true,
+    useCases,
+    explanation: 'Для AI-детекции нужен отдельный ускоритель: Hailo-8L (M.2), Intel OpenVINO (на iGPU) или USB-ускоритель. Работает параллельно с транскодингом.',
+  };
+}
+
+// ─── Network ───
+
+export function determineNetworkRequirements(answers: WizardAnswers): NetworkRequirements {
+  const wants10gbe = answers.network.currentSpeed === '10gbe' || answers.network.needUpgrade;
+  const hasHeavyStorage = answers.useCases.includes('vm') ||
+    (answers.useCases.includes('media') && answers.media && answers.media.libraryTB >= 8);
+
+  let recommendedSpeed: '1gbe' | '2.5gbe' | '10gbe' = '1gbe';
+  if (wants10gbe || hasHeavyStorage) {
+    recommendedSpeed = '10gbe';
+  } else if (answers.network.currentSpeed !== '100mbps') {
+    recommendedSpeed = '2.5gbe';
+  }
+
+  return {
+    recommendedSpeed,
+    need10gbe: wants10gbe,
+    explanation: recommendedSpeed === '10gbe'
+      ? '10GbE для максимальной пропускной способности. Нужны Cat6/Cat6a кабели и 10GbE свитч.'
+      : recommendedSpeed === '2.5gbe'
+        ? '2.5GbE — оптимальный апгрейд. Работает на Cat5e, один HDD уже не упирается в сеть.'
+        : '1GbE достаточно. Легко апгрейднуть до 2.5GbE (PCIe карта ~$25).',
+  };
+}
+
+// ─── Form Factor ───
+
+export function determineFormFactor(driveCount: number, answers: WizardAnswers): FormFactorRequirements {
+  const cpuScore = calcCpuScore(answers);
+  const placement = answers.formFactor.placement;
+
+  let maxMbFormFactor: 'mini-itx' | 'mini-dtx' | 'atx' = 'mini-itx';
+  if (cpuScore >= 8 || driveCount > 8) maxMbFormFactor = 'atx';
+  else if (cpuScore >= 5 || driveCount > 6) maxMbFormFactor = 'mini-dtx';
+
+  return {
+    minBays35: driveCount,
+    maxMbFormFactor,
+    placement,
+    explanation: `Корпус от ${driveCount} отсеков 3.5". Форм-фактор платы: до ${maxMbFormFactor.toUpperCase()}. ${placement === 'home' ? 'Для дома — тихий NAS-корпус.' : placement === 'rack' ? 'Стойка 19" — 4U для плотности дисков.' : 'Серверная — шум не критичен, приоритет обслуживаемость.'}`,
+  };
+}
+
+// ─── UPS ───
 
 export function shouldRecommendUPS(answers: WizardAnswers): boolean {
   return (
@@ -199,5 +319,28 @@ export function shouldRecommendUPS(answers: WizardAnswers): boolean {
     answers.useCases.includes('surveillance') ||
     answers.reliability.criticality === 'high' ||
     answers.reliability.criticality === 'mission_critical'
+  );
+}
+
+export function determineUps(totalPowerW: number, answers: WizardAnswers): UpsRequirements | null {
+  const needUps = answers.formFactor.needUps || shouldRecommendUPS(answers);
+  if (!needUps) return null;
+
+  const minVA = Math.ceil(totalPowerW / 0.6 * 1.3 / 50) * 50;
+
+  return {
+    minVA: Math.max(minVA, 400),
+    explanation: `ИБП от ${Math.max(minVA, 400)} ВА для корректного завершения работы при отключении питания. Подключите NAS через USB к ИБП для автоматического выключения.`,
+  };
+}
+
+// ─── Helpers for wizard UI ───
+
+export function shouldRecommendSSDCache(answers: WizardAnswers): boolean {
+  return (
+    answers.useCases.includes('docker') ||
+    answers.useCases.includes('vm') ||
+    answers.useCases.includes('business') ||
+    (answers.useCases.includes('media') && answers.media?.transcoding !== 'none')
   );
 }

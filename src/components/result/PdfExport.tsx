@@ -7,6 +7,13 @@ interface PdfExportProps {
   config: NASConfig;
 }
 
+const TIER_LABELS: Record<string, string> = {
+  basic: 'Базовый',
+  mid: 'Средний',
+  heavy: 'Производительный',
+  server: 'Серверный',
+};
+
 export function PdfExport({ config }: PdfExportProps) {
   const [loading, setLoading] = useState(false);
 
@@ -20,36 +27,35 @@ export function PdfExport({ config }: PdfExportProps) {
       const margin = 20;
       const lineHeight = 7;
 
-      // Title
       doc.setFontSize(18);
       doc.text('NAS Configuration - Xpenology', margin, y);
       y += lineHeight * 2;
 
-      // Components
       doc.setFontSize(12);
-      doc.text('Components:', margin, y);
+      doc.text('Hardware Requirements:', margin, y);
       y += lineHeight;
 
       doc.setFontSize(10);
-      const components = [
-        `Case: ${config.case.name}`,
-        `Board/CPU: ${config.motherboard.name}`,
-        `RAM: ${config.ramModules}`,
-        `Drives: ${config.storageBreakdown.driveCount}x ${config.drives[0]?.name || 'N/A'}`,
-        `RAID: ${config.raidType.toUpperCase()}`,
-        `PSU: ${config.psuWatts}W`,
-        ...(config.ups ? [`UPS: ${config.ups}`] : []),
-        ...(config.ssdCache.length > 0 ? [`SSD Cache: ${config.ssdCache.length}x ${config.ssdCache[0].name}`] : []),
+      const specs = [
+        `CPU: ${TIER_LABELS[config.cpu.tier]} - ${config.cpu.minCores} cores / ${config.cpu.minThreads} threads (TDP ${config.cpu.tdpRange[0]}-${config.cpu.tdpRange[1]}W)`,
+        ...(config.cpu.needsQuickSync ? [`QuickSync: ${config.cpu.minQuickSyncGen}`] : []),
+        `RAM: ${config.ram.minGB}-${config.ram.recommendedGB} GB (ECC: ${config.ram.eccRecommendation})`,
+        `Drives: ${config.storage.driveCount}x ${config.storage.minDriveSizeTB}TB+ (${config.storage.driveClass}, CMR, TLER)`,
+        `RAID: ${config.storage.raidType.toUpperCase()}`,
+        ...(config.ssdCache ? [`SSD Cache: ${config.ssdCache.count}x NVMe ${config.ssdCache.minCapacityGB}GB+ (TLC, DRAM, TBW ${config.ssdCache.minTBW}+)`] : []),
+        `Network: ${config.network.recommendedSpeed}`,
+        `PSU: ${config.psu.recommendedWatts}W 80+ Gold (~${config.estimatedPowerW}W load)`,
+        ...(config.ups ? [`UPS: ${config.ups.minVA}VA+`] : []),
+        `Case: ${config.formFactor.minBays35}+ bays, ${config.formFactor.maxMbFormFactor.toUpperCase()}`,
       ];
 
-      components.forEach((line) => {
+      specs.forEach((line) => {
         doc.text(line, margin + 5, y);
         y += lineHeight;
       });
 
       y += lineHeight;
 
-      // Storage
       doc.setFontSize(12);
       doc.text('Storage:', margin, y);
       y += lineHeight;
@@ -60,19 +66,18 @@ export function PdfExport({ config }: PdfExportProps) {
       doc.text(`Usable: ${formatTiB(config.storageBreakdown.usableTiB)}`, margin + 5, y);
       y += lineHeight * 2;
 
-      // Price
       doc.setFontSize(12);
-      doc.text('Price Breakdown:', margin, y);
+      doc.text('Estimated Price Range:', margin, y);
       y += lineHeight;
 
       doc.setFontSize(10);
       const prices = [
-        `Hardware: ${formatPrice(config.priceBreakdown.hardware)}`,
-        `Drives: ${formatPrice(config.priceBreakdown.drives)}`,
-        ...(config.priceBreakdown.ssdCache > 0 ? [`SSD Cache: ${formatPrice(config.priceBreakdown.ssdCache)}`] : []),
-        `Accessories: ${formatPrice(config.priceBreakdown.accessories)}`,
-        `Assembly: ${formatPrice(config.priceBreakdown.assembly)}`,
-        `TOTAL: ${formatPrice(config.priceBreakdown.total)}`,
+        `Hardware: ${formatPrice(config.priceEstimate.hardware.min)} - ${formatPrice(config.priceEstimate.hardware.max)}`,
+        `Drives: ${formatPrice(config.priceEstimate.drives.min)} - ${formatPrice(config.priceEstimate.drives.max)}`,
+        ...(config.priceEstimate.ssdCache ? [`SSD Cache: ${formatPrice(config.priceEstimate.ssdCache.min)} - ${formatPrice(config.priceEstimate.ssdCache.max)}`] : []),
+        `Accessories: ${formatPrice(config.priceEstimate.accessories.min)} - ${formatPrice(config.priceEstimate.accessories.max)}`,
+        `Assembly: ${formatPrice(config.priceEstimate.assembly)}`,
+        `TOTAL: ${formatPrice(config.priceEstimate.totalRange.min)} - ${formatPrice(config.priceEstimate.totalRange.max)}`,
       ];
 
       prices.forEach((line) => {
@@ -82,7 +87,6 @@ export function PdfExport({ config }: PdfExportProps) {
 
       y += lineHeight;
 
-      // Synology comparison
       doc.setFontSize(12);
       doc.text('vs Synology:', margin, y);
       y += lineHeight;
@@ -90,10 +94,10 @@ export function PdfExport({ config }: PdfExportProps) {
       doc.setFontSize(10);
       doc.text(`Synology ${config.synologyComparison.model.model}: ${formatPrice(config.synologyComparison.synologyTotal)}`, margin + 5, y);
       y += lineHeight;
-      doc.text(`Xpenology: ${formatPrice(config.synologyComparison.xpenologyTotal)}`, margin + 5, y);
+      doc.text(`Xpenology (est.): ~${formatPrice(config.synologyComparison.estimatedXpenologyTotal)}`, margin + 5, y);
       y += lineHeight;
-      if (config.synologyComparison.savings > 0) {
-        doc.text(`Savings: ${formatPrice(config.synologyComparison.savings)}`, margin + 5, y);
+      if (config.synologyComparison.savings.min > 0) {
+        doc.text(`Savings: ${formatPrice(config.synologyComparison.savings.min)} - ${formatPrice(config.synologyComparison.savings.max)}`, margin + 5, y);
       }
 
       doc.save('nas-configuration.pdf');
