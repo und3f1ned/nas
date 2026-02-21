@@ -151,21 +151,24 @@ export function generateSynologyComparison(config: NASConfig, answers: WizardAns
     severity: 'info',
   });
 
-  // ─── Price comparison ───
+  // ─── Price comparison (hardware only — drives are same for both) ───
 
   const synologyTotalMin = model.priceRubMin;
   const synologyTotalMax = model.priceRubMax;
-  const customMin = config.priceEstimate.totalRange.min;
-  const customMax = config.priceEstimate.totalRange.max;
+
+  // Custom NAS price WITHOUT drives — fair comparison since you buy drives either way
+  const pe = config.priceEstimate;
+  const customHwMin = pe.hardware.min + pe.accessories.min + pe.assembly + (pe.ssdCache?.min ?? 0);
+  const customHwMax = pe.hardware.max + pe.accessories.max + pe.assembly + (pe.ssdCache?.max ?? 0);
 
   const synologyMid = (synologyTotalMin + synologyTotalMax) / 2;
-  const customMid = (customMin + customMax) / 2;
+  const customMid = (customHwMin + customHwMax) / 2;
   const savingsPercent = Math.round(((synologyMid - customMid) / synologyMid) * 100);
 
   return {
     closestModel: model.model,
     synologyPriceRub: { min: synologyTotalMin, max: synologyTotalMax },
-    customPriceRub: config.priceEstimate.totalRange,
+    customPriceRub: { min: customHwMin, max: customHwMax },
     savingsPercent: Math.max(savingsPercent, 0),
     problems,
   };

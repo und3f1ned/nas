@@ -74,7 +74,7 @@ export function SynologyComparison({ comparison }: Props) {
         </div>
 
         <p className="text-[11px] text-text-muted mt-2">
-          * Цена Synology в России: серый импорт, без гарантии. Цена кастомного NAS включает сборку.
+          * Без дисков (одинаковые в обоих случаях). Synology: серый импорт в России, без гарантии. Кастом: железо + корпус + БП + UPS + сборка.
         </p>
       </div>
 
