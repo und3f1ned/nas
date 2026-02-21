@@ -18,10 +18,8 @@ export function OptionCard({
   compact = false,
 }: OptionCardProps) {
   return (
-    <motion.button
+    <button
       type="button"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`
         relative flex ${compact ? 'flex-row items-center gap-3 p-3' : 'flex-col items-center gap-2 p-5'}
@@ -29,6 +27,7 @@ export function OptionCard({
         ${selected
           ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10'
           : 'border-border bg-bg-card hover:border-border-active hover:bg-bg-card-hover'}
+        active:brightness-90
       `}
     >
       <span className={compact ? 'text-2xl' : 'text-4xl'}>{icon}</span>
@@ -51,6 +50,6 @@ export function OptionCard({
           </svg>
         </motion.div>
       )}
-    </motion.button>
+    </button>
   );
 }

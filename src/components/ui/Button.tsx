@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 interface ButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
@@ -23,18 +21,16 @@ export function Button({
     secondary: 'bg-bg-card hover:bg-bg-card-hover text-text-primary border border-border',
     ghost: 'bg-transparent hover:bg-bg-card text-text-secondary hover:text-text-primary',
   };
-  const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
+  const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:brightness-90';
 
   return (
-    <motion.button
+    <button
       type={type}
-      whileHover={disabled ? {} : { scale: 1.02 }}
-      whileTap={disabled ? {} : { scale: 0.98 }}
       onClick={disabled ? undefined : onClick}
       className={`${base} ${variants[variant]} ${disabledClass} ${className}`}
       disabled={disabled}
     >
       {children}
-    </motion.button>
+    </button>
   );
 }
