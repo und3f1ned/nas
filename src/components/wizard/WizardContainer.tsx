@@ -88,7 +88,7 @@ export function WizardContainer() {
         completedSteps={completedSteps}
       />
 
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-x-hidden -mx-2 px-2 -my-1 py-1">
         <AnimatePresence initial={false} mode="popLayout">
           <motion.div
             key={currentStep + (isDetails ? `-${useWizardStore.getState().currentDetailIndex}` : '')}
