@@ -8,7 +8,6 @@ import { InsightsSection } from './InsightsSection';
 import { SynologyComparison } from './SynologyComparison';
 import { PdfExport } from './PdfExport';
 import { Button } from '../ui/Button';
-import { getShareUrl } from '../../utils/share';
 import { generateSynologyComparison } from '../../engine/synology-comparison';
 
 export function ResultPage() {
@@ -27,16 +26,6 @@ export function ResultPage() {
     );
   }
 
-  const handleShare = async () => {
-    const url = getShareUrl(answers);
-    try {
-      await navigator.clipboard.writeText(url);
-      alert('Ссылка скопирована в буфер обмена!');
-    } catch {
-      prompt('Скопируйте ссылку:', url);
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -52,9 +41,6 @@ export function ResultPage() {
 
       <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-border no-print">
         <PdfExport config={result} />
-        <Button variant="secondary" onClick={handleShare}>
-          Поделиться ссылкой
-        </Button>
         <Button
           variant="ghost"
           onClick={() => setShowResult(false)}

@@ -3,44 +3,53 @@ import { AnimatePresence } from 'framer-motion';
 import { useWizardStore } from './store/wizard-store';
 import { WizardContainer } from './components/wizard/WizardContainer';
 import { ResultPage } from './components/result/ResultPage';
-import { decodeAnswers } from './utils/share';
+import { decodeAnswers, encodeAnswers } from './utils/share';
 import { generateConfig } from './engine/configurator';
 import './index.css';
 
 function App() {
   const showResult = useWizardStore((s) => s.showResult);
+  const answers = useWizardStore((s) => s.answers);
 
+  // Restore config from URL on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const encoded = params.get('config');
     if (!encoded) return;
 
-    const answers = decodeAnswers(encoded);
-    if (!answers || !answers.useCases?.length) return;
+    const decoded = decodeAnswers(encoded);
+    if (!decoded || !decoded.useCases?.length) return;
 
     try {
-      const result = generateConfig(answers);
+      const result = generateConfig(decoded);
       const store = useWizardStore.getState();
-      store.setUseCases(answers.useCases);
-      if (answers.fileStorage) store.setFileStorage(answers.fileStorage);
-      if (answers.media) store.setMedia(answers.media);
-      if (answers.surveillance) store.setSurveillance(answers.surveillance);
-      if (answers.docker) store.setDocker(answers.docker);
-      if (answers.vm) store.setVM(answers.vm);
-      if (answers.backup) store.setBackup(answers.backup);
-      if (answers.business) store.setBusiness(answers.business);
-      store.setNetwork(answers.network);
-      store.setReliability(answers.reliability);
-      store.setFormFactor(answers.formFactor);
-      store.setBudget(answers.budget);
+      store.setUseCases(decoded.useCases);
+      if (decoded.fileStorage) store.setFileStorage(decoded.fileStorage);
+      if (decoded.media) store.setMedia(decoded.media);
+      if (decoded.surveillance) store.setSurveillance(decoded.surveillance);
+      if (decoded.docker) store.setDocker(decoded.docker);
+      if (decoded.vm) store.setVM(decoded.vm);
+      if (decoded.backup) store.setBackup(decoded.backup);
+      if (decoded.business) store.setBusiness(decoded.business);
+      store.setNetwork(decoded.network);
+      store.setReliability(decoded.reliability);
+      store.setFormFactor(decoded.formFactor);
+      store.setBudget(decoded.budget);
       store.setResult(result);
     } catch {
       // Invalid config in URL — ignore, show wizard
     }
-
-    // Clean URL without reload
-    window.history.replaceState({}, '', window.location.pathname);
   }, []);
+
+  // Sync URL with result page state
+  useEffect(() => {
+    if (showResult) {
+      const encoded = encodeAnswers(answers);
+      window.history.replaceState({}, '', `?config=${encoded}`);
+    } else {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [showResult, answers]);
 
   return (
     <div className="min-h-screen bg-bg-primary">
