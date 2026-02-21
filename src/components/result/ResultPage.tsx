@@ -3,7 +3,6 @@ import { useWizardStore } from '../../store/wizard-store';
 import { ConfigCard } from './ConfigCard';
 import { StorageBreakdown } from './StorageBreakdown';
 import { PriceTable } from './PriceTable';
-import { SynologyComparison } from './SynologyComparison';
 import { InsightsSection } from './InsightsSection';
 import { ServicesList } from './ServicesList';
 import { PdfExport } from './PdfExport';
@@ -41,7 +40,6 @@ export function ResultPage() {
       <ConfigCard config={result} />
       <StorageBreakdown breakdown={result.storageBreakdown} />
       <PriceTable estimate={result.priceEstimate} />
-      <SynologyComparison comparison={result.synologyComparison} />
       <InsightsSection insights={result.insights} />
       <ServicesList />
 

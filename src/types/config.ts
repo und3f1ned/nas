@@ -137,28 +137,6 @@ export interface PriceEstimate {
   totalRange: PriceRange;
 }
 
-// ─── Synology comparison ───
-
-export interface SynologyComparison {
-  model: {
-    model: string;
-    bays: number;
-    cpu: string;
-    ram_gb: number;
-    max_ram_gb: number;
-    max_cameras: number;
-    network: string;
-    price_rub: number;
-    has_10gbe?: boolean;
-    notes?: string;
-  };
-  synologyTotal: number;
-  licenseCost: number;
-  estimatedXpenologyTotal: number;
-  savings: PriceRange;
-  limitations: string[];
-}
-
 // ─── Educational insights ───
 
 export type InsightSeverity = 'info' | 'warning' | 'tip';
@@ -188,7 +166,6 @@ export interface NASConfig {
   formFactor: FormFactorRequirements;
   storageBreakdown: StorageBreakdownResult;
   priceEstimate: PriceEstimate;
-  synologyComparison: SynologyComparison;
   insights: Insight[];
   estimatedPowerW: number;
 }

@@ -1,5 +1,4 @@
 import type { PriceEstimate, PriceRange, CpuTier, DriveClass } from '../types/config';
-import profilesData from '../data/profiles.json';
 
 interface PriceEstimateParams {
   cpuTier: CpuTier;
@@ -98,7 +97,7 @@ export function calcPriceEstimate(params: PriceEstimateParams): PriceEstimate {
     accessories = addRanges(accessories, upsPrice);
   }
 
-  const assembly = profilesData.assembly_price_rub;
+  const assembly = 10000;
 
   const totalRange = addRanges(
     hardware,

@@ -9,7 +9,7 @@
     "media": {
       "cpu_weight": 2,
       "ram_base_gb": 2,
-      "description": "Медиасервер (Plex/Jellyfin)",
+      "description": "Медиасервер",
       "icon": "film"
     },
     "surveillance": {
@@ -39,31 +39,9 @@
     "business": {
       "cpu_weight": 2,
       "ram_base_gb": 2,
-      "description": "Бизнес (Synology Drive, офис)",
+      "description": "Бизнес",
       "icon": "building"
     }
   },
-  "assembly_price_rub": 10000,
-  "ups_models": [
-    { "name": "APC Back-UPS 650VA", "price_rub": 8000 },
-    { "name": "APC Back-UPS 1100VA", "price_rub": 12000 },
-    { "name": "CyberPower UT1050E", "price_rub": 9500 }
-  ],
-  "psu_models": [
-    { "watts": 200, "name": "FSP 200W Flex ATX 80+", "price_rub": 3500 },
-    { "watts": 250, "name": "Seasonic 250W 80+ Gold", "price_rub": 5000 },
-    { "watts": 300, "name": "Seasonic 300W 80+ Gold", "price_rub": 5500 },
-    { "watts": 350, "name": "Seasonic 350W 80+ Gold", "price_rub": 6000 },
-    { "watts": 450, "name": "Corsair SF450 80+ Gold", "price_rub": 8500 },
-    { "watts": 550, "name": "Corsair SF550 80+ Platinum", "price_rub": 11000 }
-  ],
-  "ram_prices_rub": {
-    "4": 2500,
-    "8": 4000,
-    "16": 7000,
-    "32": 13000,
-    "64": 25000
-  },
-  "surveillance_license_cost_rub": 3500,
-  "surveillance_free_cameras": 2
+  "assembly_price_rub": 10000
 }

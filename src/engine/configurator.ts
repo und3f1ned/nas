@@ -15,7 +15,6 @@ import {
 } from './component-selector';
 import { estimatePowerWatts, determinePsu } from './power-calculator';
 import { calcPriceEstimate } from './price-calculator';
-import { findClosestSynology } from './synology-comparator';
 import { selectInsights } from '../data/insights';
 
 export function generateConfig(answers: WizardAnswers): NASConfig {
@@ -156,18 +155,7 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     driveSlots: formFactor.minBays35,
   });
 
-  // 8. Synology comparison
-  const cameras = answers.surveillance?.cameras || 0;
-  const synologyComparison = findClosestSynology({
-    requiredBays: storage.driveCount,
-    ramGB: ram.minGB,
-    cameras,
-    has10gbe: network.need10gbe,
-    driveCostRange: priceEstimate.drives,
-    xpenologyTotalRange: priceEstimate.totalRange,
-  });
-
-  // 9. Educational insights
+  // 8. Educational insights
   const insights = selectInsights(answers);
 
   return {
@@ -183,7 +171,6 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     formFactor,
     storageBreakdown,
     priceEstimate,
-    synologyComparison,
     insights,
     estimatedPowerW,
   };

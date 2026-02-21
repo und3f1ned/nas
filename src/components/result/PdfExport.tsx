@@ -85,21 +85,6 @@ export function PdfExport({ config }: PdfExportProps) {
         y += lineHeight;
       });
 
-      y += lineHeight;
-
-      doc.setFontSize(12);
-      doc.text('vs Synology:', margin, y);
-      y += lineHeight;
-
-      doc.setFontSize(10);
-      doc.text(`Synology ${config.synologyComparison.model.model}: ${formatPrice(config.synologyComparison.synologyTotal)}`, margin + 5, y);
-      y += lineHeight;
-      doc.text(`Xpenology (est.): ~${formatPrice(config.synologyComparison.estimatedXpenologyTotal)}`, margin + 5, y);
-      y += lineHeight;
-      if (config.synologyComparison.savings.min > 0) {
-        doc.text(`Savings: ${formatPrice(config.synologyComparison.savings.min)} - ${formatPrice(config.synologyComparison.savings.max)}`, margin + 5, y);
-      }
-
       doc.save('nas-configuration.pdf');
     } catch (err) {
       console.error('PDF generation failed:', err);
