@@ -49,7 +49,9 @@ export function ConfigCard({ config }: ConfigCardProps) {
     }] : []),
     {
       label: 'Оперативная память',
-      value: `от ${config.ram.minGB} ГБ (рекомендуется ${config.ram.recommendedGB} ГБ)`,
+      value: config.ram.minGB === config.ram.recommendedGB
+        ? `${config.ram.minGB} ГБ`
+        : `от ${config.ram.minGB} ГБ (рекомендуется ${config.ram.recommendedGB} ГБ)`,
       detail: config.ram.explanation,
       tags: [
         `ECC: ${ECC_LABELS[config.ram.eccRecommendation]}`,
