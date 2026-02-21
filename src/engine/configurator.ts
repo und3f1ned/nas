@@ -150,7 +150,7 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     ssdCacheCount: ssdCache?.count || 0,
     ssdMinCapacityGB: ssdCache?.minCapacityGB || 0,
     psuWatts: psu.recommendedWatts,
-    upsMinVA: ups?.minVA || null,
+    upsMinVA: ups.minVA,
     maxMbFormFactor: formFactor.maxMbFormFactor,
     driveSlots: formFactor.minBays35,
   });

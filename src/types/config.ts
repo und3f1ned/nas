@@ -162,7 +162,7 @@ export interface NASConfig {
   ai: AiRequirements | null;
   network: NetworkRequirements;
   psu: PsuRequirements;
-  ups: UpsRequirements | null;
+  ups: UpsRequirements;
   formFactor: FormFactorRequirements;
   storageBreakdown: StorageBreakdownResult;
   priceEstimate: PriceEstimate;

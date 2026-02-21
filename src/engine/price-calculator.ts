@@ -9,7 +9,7 @@ interface PriceEstimateParams {
   ssdCacheCount: number;
   ssdMinCapacityGB: number;
   psuWatts: number;
-  upsMinVA: number | null;
+  upsMinVA: number;
   maxMbFormFactor: string;
   driveSlots: number;
 }
@@ -86,16 +86,13 @@ export function calcPriceEstimate(params: PriceEstimateParams): PriceEstimate {
     ssdCache = scaleRange(SSD_PRICE_PER_250GB, ssdMultiplier);
   }
 
-  // Accessories: UPS + cables
-  let accessories: PriceRange = { min: 1500, max: 3000 };
-  if (params.upsMinVA) {
-    const upsPrice: PriceRange = params.upsMinVA <= 650
-      ? { min: 6000, max: 10000 }
-      : params.upsMinVA <= 1100
-        ? { min: 9000, max: 15000 }
-        : { min: 14000, max: 22000 };
-    accessories = addRanges(accessories, upsPrice);
-  }
+  // Accessories: UPS (always included) + cables
+  const upsPrice: PriceRange = params.upsMinVA <= 650
+    ? { min: 6000, max: 10000 }
+    : params.upsMinVA <= 1100
+      ? { min: 9000, max: 15000 }
+      : { min: 14000, max: 22000 };
+  const accessories: PriceRange = addRanges({ min: 1500, max: 3000 }, upsPrice);
 
   const assembly = 10000;
 

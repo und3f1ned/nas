@@ -1,11 +1,46 @@
+import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useWizardStore } from './store/wizard-store';
 import { WizardContainer } from './components/wizard/WizardContainer';
 import { ResultPage } from './components/result/ResultPage';
+import { decodeAnswers } from './utils/share';
+import { generateConfig } from './engine/configurator';
 import './index.css';
 
 function App() {
   const showResult = useWizardStore((s) => s.showResult);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get('config');
+    if (!encoded) return;
+
+    const answers = decodeAnswers(encoded);
+    if (!answers || !answers.useCases?.length) return;
+
+    try {
+      const result = generateConfig(answers);
+      const store = useWizardStore.getState();
+      store.setUseCases(answers.useCases);
+      if (answers.fileStorage) store.setFileStorage(answers.fileStorage);
+      if (answers.media) store.setMedia(answers.media);
+      if (answers.surveillance) store.setSurveillance(answers.surveillance);
+      if (answers.docker) store.setDocker(answers.docker);
+      if (answers.vm) store.setVM(answers.vm);
+      if (answers.backup) store.setBackup(answers.backup);
+      if (answers.business) store.setBusiness(answers.business);
+      store.setNetwork(answers.network);
+      store.setReliability(answers.reliability);
+      store.setFormFactor(answers.formFactor);
+      store.setBudget(answers.budget);
+      store.setResult(result);
+    } catch {
+      // Invalid config in URL — ignore, show wizard
+    }
+
+    // Clean URL without reload
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   return (
     <div className="min-h-screen bg-bg-primary">

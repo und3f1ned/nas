@@ -1,89 +1,53 @@
 import { useState } from 'react';
 import { Button } from '../ui/Button';
-import type { NASConfig } from '../../types/config';
-import { formatPrice, formatTB, formatTiB } from '../../utils/formatters';
 
 interface PdfExportProps {
-  config: NASConfig;
+  config: unknown; // only needed to trigger re-render, we screenshot the DOM
 }
 
-const TIER_LABELS: Record<string, string> = {
-  basic: 'Базовый',
-  mid: 'Средний',
-  heavy: 'Производительный',
-  server: 'Серверный',
-};
-
-export function PdfExport({ config }: PdfExportProps) {
+export function PdfExport(_props: PdfExportProps) {
   const [loading, setLoading] = useState(false);
 
   const handleExport = async () => {
     setLoading(true);
     try {
-      const { default: jsPDF } = await import('jspdf');
-      const doc = new jsPDF();
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
 
-      let y = 20;
-      const margin = 20;
-      const lineHeight = 7;
+      // Capture the result content (everything inside <main>)
+      const target = document.querySelector('main');
+      if (!target) return;
 
-      doc.setFontSize(18);
-      doc.text('NAS Configuration - Xpenology', margin, y);
-      y += lineHeight * 2;
-
-      doc.setFontSize(12);
-      doc.text('Hardware Requirements:', margin, y);
-      y += lineHeight;
-
-      doc.setFontSize(10);
-      const specs = [
-        `CPU: ${TIER_LABELS[config.cpu.tier]} - ${config.cpu.minCores} cores / ${config.cpu.minThreads} threads (TDP ${config.cpu.tdpRange[0]}-${config.cpu.tdpRange[1]}W)`,
-        ...(config.cpu.needsQuickSync ? [`QuickSync: ${config.cpu.minQuickSyncGen}`] : []),
-        `RAM: ${config.ram.minGB}-${config.ram.recommendedGB} GB (ECC: ${config.ram.eccRecommendation})`,
-        `Drives: ${config.storage.driveCount}x ${config.storage.minDriveSizeTB}TB+ (${config.storage.driveClass}, CMR, TLER)`,
-        `RAID: ${config.storage.raidType.toUpperCase()}`,
-        ...(config.ssdCache ? [`SSD Cache: ${config.ssdCache.count}x NVMe ${config.ssdCache.minCapacityGB}GB+ (TLC, DRAM, TBW ${config.ssdCache.minTBW}+)`] : []),
-        `Network: ${config.network.recommendedSpeed}`,
-        `PSU: ${config.psu.recommendedWatts}W 80+ Gold (~${config.estimatedPowerW}W load)`,
-        ...(config.ups ? [`UPS: ${config.ups.minVA}VA+`] : []),
-        `Case: ${config.formFactor.minBays35}+ bays, ${config.formFactor.maxMbFormFactor.toUpperCase()}`,
-      ];
-
-      specs.forEach((line) => {
-        doc.text(line, margin + 5, y);
-        y += lineHeight;
+      const canvas = await html2canvas(target as HTMLElement, {
+        backgroundColor: '#0f172a', // bg-primary
+        scale: 2,
+        useCORS: true,
+        logging: false,
       });
 
-      y += lineHeight;
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      doc.setFontSize(12);
-      doc.text('Storage:', margin, y);
-      y += lineHeight;
+      const doc = new jsPDF('p', 'mm', 'a4');
 
-      doc.setFontSize(10);
-      doc.text(`RAW: ${formatTB(config.storageBreakdown.rawTB)}`, margin + 5, y);
-      y += lineHeight;
-      doc.text(`Usable: ${formatTiB(config.storageBreakdown.usableTiB)}`, margin + 5, y);
-      y += lineHeight * 2;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-      doc.setFontSize(12);
-      doc.text('Estimated Price Range:', margin, y);
-      y += lineHeight;
+      // First page
+      doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
 
-      doc.setFontSize(10);
-      const prices = [
-        `Hardware: ${formatPrice(config.priceEstimate.hardware.min)} - ${formatPrice(config.priceEstimate.hardware.max)}`,
-        `Drives: ${formatPrice(config.priceEstimate.drives.min)} - ${formatPrice(config.priceEstimate.drives.max)}`,
-        ...(config.priceEstimate.ssdCache ? [`SSD Cache: ${formatPrice(config.priceEstimate.ssdCache.min)} - ${formatPrice(config.priceEstimate.ssdCache.max)}`] : []),
-        `Accessories: ${formatPrice(config.priceEstimate.accessories.min)} - ${formatPrice(config.priceEstimate.accessories.max)}`,
-        `Assembly: ${formatPrice(config.priceEstimate.assembly)}`,
-        `TOTAL: ${formatPrice(config.priceEstimate.totalRange.min)} - ${formatPrice(config.priceEstimate.totalRange.max)}`,
-      ];
-
-      prices.forEach((line) => {
-        doc.text(line, margin + 5, y);
-        y += lineHeight;
-      });
+      // Additional pages if content is taller than one page
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        doc.addPage();
+        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
 
       doc.save('nas-configuration.pdf');
     } catch (err) {

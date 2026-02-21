@@ -91,12 +91,12 @@ export function ConfigCard({ config }: ConfigCardProps) {
       detail: config.psu.explanation,
       tags: [`~${formatWatts(config.estimatedPowerW)} потребление`],
     },
-    ...(config.ups ? [{
+    {
       label: 'ИБП (UPS)',
       value: `от ${config.ups.minVA} ВА`,
       detail: config.ups.explanation,
-      tags: [] as string[],
-    }] : []),
+      tags: ['Обязательно'],
+    },
     {
       label: 'Корпус',
       value: `от ${config.formFactor.minBays35} отсеков 3.5", до ${config.formFactor.maxMbFormFactor.toUpperCase()}`,

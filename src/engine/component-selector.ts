@@ -213,6 +213,25 @@ export function determineSsdCache(answers: WizardAnswers): SsdCacheRequirements 
   const minCapacityGB = isHeavy ? 500 : 250;
   const minTBW = isHeavy ? 600 : 300;
 
+  // Build per-use-case explanation
+  const reasons: string[] = [];
+  if (answers.useCases.includes('docker')) {
+    reasons.push('Docker-контейнеры создают массу мелких случайных операций (I/O) — базы данных, логи, метаданные. Без SSD-кэша это всё ложится на HDD, вызывая задержки');
+  }
+  if (answers.useCases.includes('vm')) {
+    reasons.push('Виртуальные машины требуют быстрого случайного доступа к дискам (загрузка ОС, swap, база данных). SSD-кэш снижает латентность в 10-50 раз по сравнению с HDD');
+  }
+  if (answers.useCases.includes('business')) {
+    reasons.push('Одновременный доступ нескольких пользователей к файлам создаёт конкурентные запросы. SSD-кэш буферизует горячие данные и метаданные, ускоряя отклик');
+  }
+  if (answers.useCases.includes('media') && answers.media?.transcoding !== 'none') {
+    reasons.push('Транскодинг читает и пишет временные файлы. SSD-кэш ускоряет доступ к метаданным библиотеки и потоковым буферам');
+  }
+
+  const reasonsText = reasons.length > 0
+    ? `\n\nЗачем именно вам: ${reasons.join('. ')}.`
+    : '';
+
   return {
     count: 2,
     minCapacityGB,
@@ -220,7 +239,7 @@ export function determineSsdCache(answers: WizardAnswers): SsdCacheRequirements 
     minNandType: 'tlc',
     dramRequired: true,
     minTBW,
-    explanation: `2× NVMe SSD от ${minCapacityGB} ГБ для кэша чтения/записи. Обязательно: TLC NAND (не QLC!), DRAM-буфер, TBW от ${minTBW}+.`,
+    explanation: `2× NVMe SSD от ${minCapacityGB} ГБ для кэша чтения/записи. Обязательно: TLC NAND (не QLC!), DRAM-буфер, TBW от ${minTBW}+.${reasonsText}`,
   };
 }
 
@@ -322,15 +341,12 @@ export function shouldRecommendUPS(answers: WizardAnswers): boolean {
   );
 }
 
-export function determineUps(totalPowerW: number, answers: WizardAnswers): UpsRequirements | null {
-  const needUps = answers.formFactor.needUps || shouldRecommendUPS(answers);
-  if (!needUps) return null;
-
+export function determineUps(totalPowerW: number, _answers: WizardAnswers): UpsRequirements {
   const minVA = Math.ceil(totalPowerW / 0.6 * 1.3 / 50) * 50;
 
   return {
     minVA: Math.max(minVA, 400),
-    explanation: `ИБП от ${Math.max(minVA, 400)} ВА для корректного завершения работы при отключении питания. Подключите NAS через USB к ИБП для автоматического выключения.`,
+    explanation: `ИБП от ${Math.max(minVA, 400)} ВА — обязательная часть любого NAS. При внезапном отключении питания диски могут потерять данные из кэша, а файловая система — повредиться. Подключите NAS через USB к ИБП для автоматического корректного выключения.`,
   };
 }
 
