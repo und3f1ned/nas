@@ -24,6 +24,7 @@ interface SynologyModel {
   bays: number;
   cpu: string;
   cpuTier: 'basic' | 'mid';
+  cpuCores: number;
   hasHwTranscoding: boolean;
   ram: number;
   maxRam: number;
@@ -32,18 +33,82 @@ interface SynologyModel {
 }
 
 const SYNOLOGY_MODELS: SynologyModel[] = [
-  { model: 'DS224+', priceUsd: 300, priceRubMin: 48000, priceRubMax: 128000, bays: 2, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', hasHwTranscoding: true, ram: 2, maxRam: 6, supportsEcc: false, network: '1gbe' },
-  { model: 'DS423+', priceUsd: 450, priceRubMin: 62000, priceRubMax: 150000, bays: 4, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', hasHwTranscoding: true, ram: 2, maxRam: 6, supportsEcc: false, network: '1gbe' },
-  { model: 'DS923+', priceUsd: 600, priceRubMin: 76000, priceRubMax: 207000, bays: 4, cpu: 'AMD Ryzen R1600 (2C/4T, без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 4, maxRam: 32, supportsEcc: true, network: '1gbe' },
-  { model: 'DS925+', priceUsd: 640, priceRubMin: 86000, priceRubMax: 215000, bays: 4, cpu: 'AMD Ryzen V1500B (4C/8T, 2018, без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 4, maxRam: 32, supportsEcc: true, network: '2.5gbe' },
-  { model: 'DS1522+', priceUsd: 700, priceRubMin: 92000, priceRubMax: 230000, bays: 5, cpu: 'AMD Ryzen R1600 (2C/4T)', cpuTier: 'mid', hasHwTranscoding: false, ram: 8, maxRam: 32, supportsEcc: true, network: '1gbe' },
-  { model: 'DS1825+', priceUsd: 1100, priceRubMin: 140000, priceRubMax: 350000, bays: 8, cpu: 'AMD Ryzen V1500B (4C/8T, 2018, без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 8, maxRam: 32, supportsEcc: true, network: '2.5gbe' },
+  { model: 'DS224+', priceUsd: 300, priceRubMin: 48000, priceRubMax: 128000, bays: 2, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', cpuCores: 4, hasHwTranscoding: true, ram: 2, maxRam: 6, supportsEcc: false, network: '1gbe' },
+  { model: 'DS423+', priceUsd: 450, priceRubMin: 62000, priceRubMax: 150000, bays: 4, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', cpuCores: 4, hasHwTranscoding: true, ram: 2, maxRam: 6, supportsEcc: false, network: '1gbe' },
+  { model: 'DS923+', priceUsd: 600, priceRubMin: 76000, priceRubMax: 207000, bays: 4, cpu: 'AMD Ryzen R1600 (2C/4T, без iGPU)', cpuTier: 'mid', cpuCores: 2, hasHwTranscoding: false, ram: 4, maxRam: 32, supportsEcc: true, network: '1gbe' },
+  { model: 'DS925+', priceUsd: 640, priceRubMin: 86000, priceRubMax: 215000, bays: 4, cpu: 'AMD Ryzen V1500B (4C/8T, 2018, без iGPU)', cpuTier: 'mid', cpuCores: 4, hasHwTranscoding: false, ram: 4, maxRam: 32, supportsEcc: true, network: '2.5gbe' },
+  { model: 'DS1522+', priceUsd: 700, priceRubMin: 92000, priceRubMax: 230000, bays: 5, cpu: 'AMD Ryzen R1600 (2C/4T)', cpuTier: 'mid', cpuCores: 2, hasHwTranscoding: false, ram: 8, maxRam: 32, supportsEcc: true, network: '1gbe' },
+  { model: 'DS1825+', priceUsd: 1100, priceRubMin: 140000, priceRubMax: 350000, bays: 8, cpu: 'AMD Ryzen V1500B (4C/8T, 2018, без iGPU)', cpuTier: 'mid', cpuCores: 4, hasHwTranscoding: false, ram: 8, maxRam: 32, supportsEcc: true, network: '2.5gbe' },
 ];
+
+const CPU_TIER_VALUE: Record<string, number> = { basic: 1, mid: 2, heavy: 3, server: 4 };
+const NETWORK_VALUE: Record<string, number> = { '1gbe': 1, '2.5gbe': 2, '10gbe': 3 };
 
 function findClosestModel(config: NASConfig): SynologyModel {
   const baysNeeded = config.storage.driveCount;
-  const eligible = SYNOLOGY_MODELS.filter(m => m.bays >= baysNeeded);
-  return eligible.length > 0 ? eligible[0] : SYNOLOGY_MODELS[SYNOLOGY_MODELS.length - 1];
+  const cpuTierNeeded = CPU_TIER_VALUE[config.cpu.tier] ?? 1;
+  const coresNeeded = config.cpu.minCores;
+  const ramNeeded = config.ram.minGB;
+  const needsEcc = config.ram.eccRecommendation !== 'not_needed';
+  const needsQuickSync = config.cpu.needsQuickSync;
+  const networkNeeded = NETWORK_VALUE[config.network.recommendedSpeed] ?? 1;
+
+  let bestModel = SYNOLOGY_MODELS[SYNOLOGY_MODELS.length - 1];
+  let bestScore = -Infinity;
+
+  for (const model of SYNOLOGY_MODELS) {
+    let score = 0;
+
+    // Bays — hard requirement, heavy penalty if insufficient
+    if (model.bays >= baysNeeded) {
+      score += 30 - (model.bays - baysNeeded); // prefer tighter fit
+    } else {
+      score -= (baysNeeded - model.bays) * 15;
+    }
+
+    // CPU tier — Synology maxes at 'mid', penalize gap to heavy/server
+    const modelTier = CPU_TIER_VALUE[model.cpuTier] ?? 1;
+    score -= Math.max(0, cpuTierNeeded - modelTier) * 8;
+
+    // CPU cores — prefer more cores when config needs them
+    if (model.cpuCores >= coresNeeded) {
+      score += 15;
+    } else {
+      score -= (coresNeeded - model.cpuCores) * 3;
+    }
+
+    // RAM — maxRam must cover the required minimum
+    if (model.maxRam >= ramNeeded) {
+      score += 20;
+    } else {
+      score -= (ramNeeded - model.maxRam) * 2;
+    }
+
+    // ECC
+    if (needsEcc) {
+      score += model.supportsEcc ? 10 : -5;
+    }
+
+    // Hardware transcoding (QuickSync)
+    if (needsQuickSync) {
+      score += model.hasHwTranscoding ? 10 : -5;
+    }
+
+    // Network speed
+    const modelNet = NETWORK_VALUE[model.network] ?? 1;
+    if (modelNet >= networkNeeded) {
+      score += 10;
+    } else {
+      score -= (networkNeeded - modelNet) * 5;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestModel = model;
+    }
+  }
+
+  return bestModel;
 }
 
 export function generateSynologyComparison(config: NASConfig, answers: WizardAnswers): SynologyComparison {
