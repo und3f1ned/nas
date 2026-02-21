@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useWizardStore } from './store/wizard-store';
 import { WizardContainer } from './components/wizard/WizardContainer';
 import { ResultPage } from './components/result/ResultPage';
@@ -6,18 +6,29 @@ import { decodeAnswers, encodeAnswers } from './utils/share';
 import { generateConfig } from './engine/configurator';
 import './index.css';
 
+function hasConfigInUrl() {
+  return new URLSearchParams(window.location.search).has('config');
+}
+
 function App() {
   const showResult = useWizardStore((s) => s.showResult);
   const answers = useWizardStore((s) => s.answers);
+  const [isRestoring, setIsRestoring] = useState(hasConfigInUrl);
 
   // Restore config from URL on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const encoded = params.get('config');
-    if (!encoded) return;
+    if (!encoded) {
+      setIsRestoring(false);
+      return;
+    }
 
     const decoded = decodeAnswers(encoded);
-    if (!decoded || !decoded.useCases?.length) return;
+    if (!decoded || !decoded.useCases?.length) {
+      setIsRestoring(false);
+      return;
+    }
 
     try {
       const result = generateConfig(decoded);
@@ -38,6 +49,7 @@ function App() {
     } catch {
       // Invalid config in URL — ignore, show wizard
     }
+    setIsRestoring(false);
   }, []);
 
   // Sync URL with result page state
@@ -78,7 +90,18 @@ function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        {showResult ? <ResultPage /> : <WizardContainer />}
+        {isRestoring ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center">
+              <div className="w-10 h-10 border-3 border-border border-t-accent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-text-muted text-sm">Восстановление конфигурации...</p>
+            </div>
+          </div>
+        ) : showResult ? (
+          <ResultPage />
+        ) : (
+          <WizardContainer />
+        )}
       </main>
 
       <footer className="border-t border-border mt-auto py-4">

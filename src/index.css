@@ -86,6 +86,14 @@ input[type="range"]::-moz-range-thumb {
   border: 2px solid var(--color-bg-primary);
 }
 
+/* Spinner for loading states */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 0.7s linear infinite;
+}
+
 /* Print styles for PDF export */
 @media print {
   body {

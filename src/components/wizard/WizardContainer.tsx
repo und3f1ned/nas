@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWizardStore } from '../../store/wizard-store';
 import { ProgressBar } from './ProgressBar';
@@ -36,6 +37,15 @@ export function WizardContainer() {
   const isFirst = currentStep === 'use_cases';
   const isLast = currentStep === 'budget';
   const isDetails = currentStep === 'details';
+
+  const prevStepRef = useRef(currentStep);
+  const direction = (() => {
+    const steps: WizardStep[] = ['use_cases', 'details', 'network', 'reliability', 'form_factor', 'budget'];
+    const prev = steps.indexOf(prevStepRef.current);
+    const curr = steps.indexOf(currentStep);
+    prevStepRef.current = currentStep;
+    return curr >= prev ? 1 : -1;
+  })();
 
   const completedSteps: WizardStep[] = [];
   const steps: WizardStep[] = ['use_cases', 'details', 'network', 'reliability', 'form_factor', 'budget'];
@@ -78,17 +88,19 @@ export function WizardContainer() {
         completedSteps={completedSteps}
       />
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep + (isDetails ? `-${useWizardStore.getState().currentDetailIndex}` : '')}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
-        >
-          <StepComponent />
-        </motion.div>
-      </AnimatePresence>
+      <div className="relative overflow-hidden">
+        <AnimatePresence initial={false} mode="popLayout">
+          <motion.div
+            key={currentStep + (isDetails ? `-${useWizardStore.getState().currentDetailIndex}` : '')}
+            initial={{ opacity: 0, x: direction * 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -40, position: 'absolute', top: 0, left: 0, right: 0 }}
+            transition={{ type: 'tween', duration: 0.2, ease: 'easeInOut' }}
+          >
+            <StepComponent />
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-border">
         <Button
