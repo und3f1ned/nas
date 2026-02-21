@@ -59,7 +59,7 @@ export function calcTotalRequiredTB(params: {
 
   return grown
     + (params.surveillanceTB || 0)
-    + (params.dockerTB || 0.1)
+    + (params.dockerTB || 0)
     + (params.vmTB || 0);
 }
 

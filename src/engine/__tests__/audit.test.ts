@@ -357,8 +357,8 @@ describe('Persona 10: Jellyfin Direct Play (50ТБ)', () => {
   });
 
   audit('Хранилище: 50ТБ → нужно много больших дисков', answers, (c) => {
-    // 50TB * 1.25 growth = 62.5TB needed
+    // 50TB * 1.5 default growth = 75TB needed
     expect(c.storage.driveCount).toBeGreaterThanOrEqual(4);
-    expect(c.storage.minDriveSizeTB).toBeGreaterThanOrEqual(16);
+    expect(c.storage.minDriveSizeTB).toBeGreaterThanOrEqual(12);
   });
 });

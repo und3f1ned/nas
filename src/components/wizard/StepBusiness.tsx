@@ -1,13 +1,20 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { Slider } from '../ui/Slider';
 
+const DEFAULTS = {
+  users: 10,
+  synologyDrive: true,
+  activeDirectory: false,
+};
+
 export function StepBusiness() {
   const { answers, setBusiness } = useWizardStore();
-  const data = answers.business || {
-    users: 10,
-    synologyDrive: true,
-    activeDirectory: false,
-  };
+  const data = answers.business || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.business) setBusiness(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (partial: Partial<typeof data>) => {
     setBusiness({ ...data, ...partial });

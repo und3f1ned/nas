@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { Slider } from '../ui/Slider';
 import { OptionCard } from '../ui/OptionCard';
@@ -6,16 +7,22 @@ import { calcSurveillanceStorageTB } from '../../engine/surveillance-calculator'
 import { formatTB } from '../../utils/formatters';
 import type { Resolution, Codec } from '../../types/wizard';
 
+const DEFAULTS = {
+  cameras: 4,
+  resolution: '1080p' as Resolution,
+  fps: 15,
+  codec: 'h265' as Codec,
+  storageDays: 30,
+  motionOnly: false,
+};
+
 export function StepSurveillance() {
   const { answers, setSurveillance } = useWizardStore();
-  const data = answers.surveillance || {
-    cameras: 4,
-    resolution: '1080p' as Resolution,
-    fps: 15,
-    codec: 'h265' as Codec,
-    storageDays: 30,
-    motionOnly: false,
-  };
+  const data = answers.surveillance || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.surveillance) setSurveillance(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (partial: Partial<typeof data>) => {
     setSurveillance({ ...data, ...partial });

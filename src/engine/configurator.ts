@@ -32,20 +32,21 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
   }
 
   let fileStorageTB = 0;
-  if (answers.useCases.includes('file_storage') && answers.fileStorage) {
-    fileStorageTB = answers.fileStorage.currentDataTB;
+  if (answers.useCases.includes('file_storage')) {
+    fileStorageTB = answers.fileStorage?.currentDataTB ?? 2;
   }
 
   let mediaLibraryTB = 0;
-  if (answers.useCases.includes('media') && answers.media) {
-    mediaLibraryTB = answers.media.libraryTB;
+  if (answers.useCases.includes('media')) {
+    mediaLibraryTB = answers.media?.libraryTB ?? 4;
   }
 
   let backupTB = 0;
-  if (answers.useCases.includes('backup') && answers.backup) {
+  if (answers.useCases.includes('backup')) {
+    const range = answers.backup?.deviceRange ?? '1-3';
     const deviceMultiplier =
-      answers.backup.deviceRange === '10+' ? 5 :
-      answers.backup.deviceRange === '3-10' ? 2 : 0.5;
+      range === '10+' ? 5 :
+      range === '3-10' ? 2 : 0.5;
     backupTB = deviceMultiplier;
   }
 
@@ -55,13 +56,12 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
   }
 
   let vmTB = 0;
-  if (answers.useCases.includes('vm') && answers.vm) {
-    vmTB = answers.vm.count * 0.1;
+  if (answers.useCases.includes('vm')) {
+    vmTB = (answers.vm?.count ?? 2) * 0.1;
   }
 
-  const growthMultiplier = answers.fileStorage
-    ? 1 + answers.fileStorage.growthPercent / 100
-    : 1.25;
+  const growthPercent = answers.fileStorage?.growthPercent ?? 50;
+  const growthMultiplier = 1 + growthPercent / 100;
 
   const totalRequiredTB = calcTotalRequiredTB({
     fileStorageTB,

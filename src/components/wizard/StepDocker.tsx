@@ -1,10 +1,17 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { OptionCard } from '../ui/OptionCard';
 import { HEAVY_DOCKER_SERVICES } from '../../utils/constants';
 
+const DEFAULTS = { containerRange: '1-5' as const, heavyServices: [] as string[] };
+
 export function StepDocker() {
   const { answers, setDocker } = useWizardStore();
-  const data = answers.docker || { containerRange: '1-5' as const, heavyServices: [] as string[] };
+  const data = answers.docker || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.docker) setDocker(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (partial: Partial<typeof data>) => {
     setDocker({ ...data, ...partial });

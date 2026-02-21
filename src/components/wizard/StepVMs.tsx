@@ -1,10 +1,17 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { Slider } from '../ui/Slider';
 import { OptionCard } from '../ui/OptionCard';
 
+const DEFAULTS = { count: 2, purpose: 'dev' as const };
+
 export function StepVMs() {
   const { answers, setVM } = useWizardStore();
-  const data = answers.vm || { count: 2, purpose: 'dev' as const };
+  const data = answers.vm || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.vm) setVM(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (partial: Partial<typeof data>) => {
     setVM({ ...data, ...partial });

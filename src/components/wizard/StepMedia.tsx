@@ -1,17 +1,24 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { Slider } from '../ui/Slider';
 import { OptionCard } from '../ui/OptionCard';
 import { STORAGE_SIZES_TB } from '../../utils/constants';
 import type { TranscodingLevel } from '../../types/wizard';
 
+const DEFAULTS = {
+  libraryTB: 4,
+  transcoding: 'none' as TranscodingLevel,
+  streams: 1,
+  engine: 'plex' as const,
+};
+
 export function StepMedia() {
   const { answers, setMedia } = useWizardStore();
-  const data = answers.media || {
-    libraryTB: 4,
-    transcoding: 'none' as TranscodingLevel,
-    streams: 1,
-    engine: 'plex' as const,
-  };
+  const data = answers.media || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.media) setMedia(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (partial: Partial<typeof data>) => {
     setMedia({ ...data, ...partial });

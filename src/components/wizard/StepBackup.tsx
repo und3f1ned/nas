@@ -1,13 +1,20 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { OptionCard } from '../ui/OptionCard';
 
+const DEFAULTS = {
+  deviceRange: '1-3' as const,
+  deviceTypes: [] as string[],
+  cloudBackup: null as string | null,
+};
+
 export function StepBackup() {
   const { answers, setBackup } = useWizardStore();
-  const data = answers.backup || {
-    deviceRange: '1-3' as const,
-    deviceTypes: [] as string[],
-    cloudBackup: null as string | null,
-  };
+  const data = answers.backup || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.backup) setBackup(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (partial: Partial<typeof data>) => {
     setBackup({ ...data, ...partial });

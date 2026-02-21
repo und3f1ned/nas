@@ -1,10 +1,17 @@
+import { useEffect } from 'react';
 import { useWizardStore } from '../../store/wizard-store';
 import { Slider } from '../ui/Slider';
 import { STORAGE_SIZES_TB, GROWTH_PERCENTS } from '../../utils/constants';
 
+const DEFAULTS = { currentDataTB: 2, growthPercent: 50 };
+
 export function StepFileStorage() {
   const { answers, setFileStorage } = useWizardStore();
-  const data = answers.fileStorage || { currentDataTB: 2, growthPercent: 50 };
+  const data = answers.fileStorage || DEFAULTS;
+
+  useEffect(() => {
+    if (!answers.fileStorage) setFileStorage(DEFAULTS);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const storageOptions = STORAGE_SIZES_TB.map((v) => ({
     value: v,
