@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import type { StorageBreakdownResult } from '../../types/config';
 import { formatTB, formatTiB } from '../../utils/formatters';
@@ -20,12 +19,7 @@ export function StorageBreakdown({ breakdown }: StorageBreakdownProps) {
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      className="bg-bg-card rounded-xl border border-border p-5"
-    >
+    <div className="bg-bg-card rounded-xl border border-border p-5">
       <h3 className="text-lg font-bold text-text-primary mb-4">Расчёт хранилища</h3>
 
       <div className="flex flex-col md:flex-row items-center gap-6">
@@ -99,6 +93,6 @@ export function StorageBreakdown({ breakdown }: StorageBreakdownProps) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

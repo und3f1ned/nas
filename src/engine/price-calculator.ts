@@ -12,6 +12,7 @@ interface PriceEstimateParams {
   upsMinVA: number;
   maxMbFormFactor: string;
   driveSlots: number;
+  includeDisks: boolean;
 }
 
 // Approximate market price ranges (no specific brands)
@@ -96,9 +97,10 @@ export function calcPriceEstimate(params: PriceEstimateParams): PriceEstimate {
 
   const assembly = 10000;
 
+  const drivesInTotal = params.includeDisks ? drives : { min: 0, max: 0 };
   const totalRange = addRanges(
     hardware,
-    drives,
+    drivesInTotal,
     ssdCache || { min: 0, max: 0 },
     accessories,
     { min: assembly, max: assembly },
@@ -110,6 +112,7 @@ export function calcPriceEstimate(params: PriceEstimateParams): PriceEstimate {
     ssdCache,
     accessories,
     assembly,
+    includeDisks: params.includeDisks,
     totalRange,
   };
 }

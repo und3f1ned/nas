@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { useWizardStore } from './store/wizard-store';
 import { WizardContainer } from './components/wizard/WizardContainer';
 import { ResultPage } from './components/result/ResultPage';
@@ -79,9 +78,7 @@ function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <AnimatePresence mode="wait">
-          {showResult ? <ResultPage key="result" /> : <WizardContainer key="wizard" />}
-        </AnimatePresence>
+        {showResult ? <ResultPage /> : <WizardContainer />}
       </main>
 
       <footer className="border-t border-border mt-auto py-4">

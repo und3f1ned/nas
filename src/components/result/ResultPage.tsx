@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useWizardStore } from '../../store/wizard-store';
 import { ConfigCard } from './ConfigCard';
 import { StorageBreakdown } from './StorageBreakdown';
@@ -27,12 +26,7 @@ export function ResultPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="space-y-6"
-    >
+    <div className="space-y-6">
       <ConfigCard config={result} />
       <StorageBreakdown breakdown={result.storageBreakdown} />
       <PriceTable estimate={result.priceEstimate} />
@@ -54,6 +48,6 @@ export function ResultPage() {
           Начать заново
         </Button>
       </div>
-    </motion.div>
+    </div>
   );
 }

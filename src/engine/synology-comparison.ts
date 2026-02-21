@@ -27,16 +27,17 @@ interface SynologyModel {
   hasHwTranscoding: boolean;
   ram: number;
   maxRam: number;
+  supportsEcc: boolean;
   network: '1gbe' | '2.5gbe';
 }
 
 const SYNOLOGY_MODELS: SynologyModel[] = [
-  { model: 'DS224+', priceUsd: 300, priceRubMin: 48000, priceRubMax: 128000, bays: 2, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', hasHwTranscoding: true, ram: 2, maxRam: 6, network: '1gbe' },
-  { model: 'DS423+', priceUsd: 450, priceRubMin: 62000, priceRubMax: 150000, bays: 4, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', hasHwTranscoding: true, ram: 2, maxRam: 6, network: '1gbe' },
-  { model: 'DS923+', priceUsd: 600, priceRubMin: 76000, priceRubMax: 207000, bays: 4, cpu: 'AMD Ryzen R1600 (без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 4, maxRam: 32, network: '1gbe' },
-  { model: 'DS925+', priceUsd: 640, priceRubMin: 86000, priceRubMax: 215000, bays: 4, cpu: 'AMD Ryzen V1500B (2018!)', cpuTier: 'mid', hasHwTranscoding: false, ram: 4, maxRam: 32, network: '2.5gbe' },
-  { model: 'DS1522+', priceUsd: 700, priceRubMin: 92000, priceRubMax: 230000, bays: 5, cpu: 'AMD Ryzen R1600', cpuTier: 'mid', hasHwTranscoding: false, ram: 8, maxRam: 32, network: '1gbe' },
-  { model: 'DS1825+', priceUsd: 1100, priceRubMin: 140000, priceRubMax: 350000, bays: 8, cpu: 'AMD Ryzen V1500B (2018!)', cpuTier: 'mid', hasHwTranscoding: false, ram: 8, maxRam: 32, network: '2.5gbe' },
+  { model: 'DS224+', priceUsd: 300, priceRubMin: 48000, priceRubMax: 128000, bays: 2, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', hasHwTranscoding: true, ram: 2, maxRam: 6, supportsEcc: false, network: '1gbe' },
+  { model: 'DS423+', priceUsd: 450, priceRubMin: 62000, priceRubMax: 150000, bays: 4, cpu: 'Intel J4125 (2019)', cpuTier: 'basic', hasHwTranscoding: true, ram: 2, maxRam: 6, supportsEcc: false, network: '1gbe' },
+  { model: 'DS923+', priceUsd: 600, priceRubMin: 76000, priceRubMax: 207000, bays: 4, cpu: 'AMD Ryzen R1600 (2C/4T, без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 4, maxRam: 32, supportsEcc: true, network: '1gbe' },
+  { model: 'DS925+', priceUsd: 640, priceRubMin: 86000, priceRubMax: 215000, bays: 4, cpu: 'AMD Ryzen V1500B (4C/8T, 2018, без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 4, maxRam: 32, supportsEcc: true, network: '2.5gbe' },
+  { model: 'DS1522+', priceUsd: 700, priceRubMin: 92000, priceRubMax: 230000, bays: 5, cpu: 'AMD Ryzen R1600 (2C/4T)', cpuTier: 'mid', hasHwTranscoding: false, ram: 8, maxRam: 32, supportsEcc: true, network: '1gbe' },
+  { model: 'DS1825+', priceUsd: 1100, priceRubMin: 140000, priceRubMax: 350000, bays: 8, cpu: 'AMD Ryzen V1500B (4C/8T, 2018, без iGPU)', cpuTier: 'mid', hasHwTranscoding: false, ram: 8, maxRam: 32, supportsEcc: true, network: '2.5gbe' },
 ];
 
 function findClosestModel(config: NASConfig): SynologyModel {
@@ -99,11 +100,11 @@ export function generateSynologyComparison(config: NASConfig, answers: WizardAns
     });
   }
 
-  if (config.ram.eccRecommendation !== 'not_needed') {
+  if (config.ram.eccRecommendation !== 'not_needed' && !model.supportsEcc) {
     problems.push({
       icon: '⚠️',
-      title: 'ECC-память: не поддерживается на бюджетных моделях',
-      description: `Для вашей задачи рекомендуется ECC, но большинство Synology (${model.model} в том числе) не поддерживают ECC. Только дорогие xs+ модели от 200 000+ руб.`,
+      title: `ECC-память: ${model.model} не поддерживает`,
+      description: `Для вашей задачи рекомендуется ECC, но ${model.model} на Intel J4125 не поддерживает ECC на аппаратном уровне. AMD-модели (DS923+, DS925+, DS1522+, DS1825+) поддерживают ECC, но стоят от 76к руб.`,
       severity: 'warning',
     });
   }

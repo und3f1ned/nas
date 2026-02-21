@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import type { PriceEstimate } from '../../types/config';
 import { formatPrice } from '../../utils/formatters';
 
@@ -14,22 +13,23 @@ function formatRange(min: number, max: number): string {
 export function PriceTable({ estimate }: PriceTableProps) {
   const rows = [
     { label: 'Железо (корпус + плата + CPU + RAM + БП)', range: estimate.hardware },
-    { label: 'Диски HDD', range: estimate.drives },
+    ...(estimate.includeDisks
+      ? [{ label: 'Диски HDD', range: estimate.drives }]
+      : []),
     ...(estimate.ssdCache ? [{ label: 'SSD-кэш', range: estimate.ssdCache }] : []),
     { label: 'Доп. оборудование (ИБП, кабели)', range: estimate.accessories },
     { label: 'Сборка и настройка', range: { min: estimate.assembly, max: estimate.assembly } },
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className="bg-bg-card rounded-xl border border-border overflow-hidden"
-    >
+    <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
         <h3 className="text-lg font-bold text-text-primary">Оценка стоимости</h3>
-        <p className="text-xs text-text-muted mt-0.5">Диапазон цен без привязки к конкретным брендам</p>
+        <p className="text-xs text-text-muted mt-0.5">
+          {estimate.includeDisks
+            ? 'Диапазон цен без привязки к конкретным брендам'
+            : 'Без дисков — диски не включены в расчёт'}
+        </p>
       </div>
 
       <div className="divide-y divide-border">
@@ -42,11 +42,13 @@ export function PriceTable({ estimate }: PriceTableProps) {
       </div>
 
       <div className="px-5 py-3 bg-accent/10 border-t border-border flex justify-between items-center">
-        <span className="text-base font-bold text-text-primary">ИТОГО (диапазон)</span>
+        <span className="text-base font-bold text-text-primary">
+          ИТОГО{estimate.includeDisks ? '' : ' (без дисков)'}
+        </span>
         <span className="text-lg font-bold font-mono text-accent-light">
           {formatRange(estimate.totalRange.min, estimate.totalRange.max)}
         </span>
       </div>
-    </motion.div>
+    </div>
   );
 }

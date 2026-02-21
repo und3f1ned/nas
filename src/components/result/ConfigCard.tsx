@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import type { NASConfig } from '../../types/config';
 import { formatWatts } from '../../utils/formatters';
 
@@ -106,11 +105,7 @@ export function ConfigCard({ config }: ConfigCardProps) {
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-bg-card rounded-xl border border-border overflow-hidden"
-    >
+    <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
       <div className="bg-accent/10 border-b border-border px-5 py-3">
         <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
           <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -143,6 +138,6 @@ export function ConfigCard({ config }: ConfigCardProps) {
           </div>
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 }

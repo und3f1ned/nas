@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import type { Insight } from '../../types/config';
 
@@ -24,12 +23,7 @@ export function InsightsSection({ insights }: InsightsSectionProps) {
   if (insights.length === 0) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.35 }}
-      className="bg-bg-card rounded-xl border border-border overflow-hidden"
-    >
+    <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
         <h3 className="text-lg font-bold text-text-primary">Подводные камни и советы</h3>
         <p className="text-xs text-text-muted mt-0.5">Важные нюансы для вашей конфигурации</p>
@@ -73,6 +67,6 @@ export function InsightsSection({ insights }: InsightsSectionProps) {
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 }

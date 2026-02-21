@@ -134,6 +134,7 @@ export interface PriceEstimate {
   ssdCache: PriceRange | null;
   accessories: PriceRange;
   assembly: number;
+  includeDisks: boolean;
   totalRange: PriceRange;
 }
 

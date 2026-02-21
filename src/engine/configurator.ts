@@ -160,6 +160,7 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
     upsMinVA: ups.minVA,
     maxMbFormFactor: formFactor.maxMbFormFactor,
     driveSlots: formFactor.minBays35,
+    includeDisks: answers.budget.includeDisks,
   });
 
   // 8. Educational insights
