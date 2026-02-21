@@ -341,15 +341,6 @@ export function determineFormFactor(driveCount: number, answers: WizardAnswers):
 
 // ─── UPS ───
 
-export function shouldRecommendUPS(answers: WizardAnswers): boolean {
-  return (
-    answers.useCases.includes('business') ||
-    answers.useCases.includes('surveillance') ||
-    answers.reliability.criticality === 'high' ||
-    answers.reliability.criticality === 'mission_critical'
-  );
-}
-
 export function determineUps(totalPowerW: number, _answers: WizardAnswers): UpsRequirements {
   const minVA = Math.ceil(totalPowerW / 0.6 * 1.3 / 50) * 50;
 

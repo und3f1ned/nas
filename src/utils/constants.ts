@@ -51,14 +51,3 @@ export const STORAGE_SIZES_TB = [0.5, 1, 2, 4, 8, 16, 32, 64, 100];
 export const GROWTH_PERCENTS = [10, 25, 50, 100, 200];
 export const FPS_OPTIONS = [10, 15, 25, 30];
 export const STORAGE_DAYS_OPTIONS = [7, 14, 30, 60, 90];
-
-export const SERVICE_LIST = [
-  'Сборка и тестирование оборудования',
-  'Установка Xpenology (DSM 7.2)',
-  'Настройка RAID, томов, shared folders',
-  'Surveillance Station (без ограничений)',
-  'Docker + Portainer',
-  'Удалённый доступ (Tailscale/VPN)',
-  'Мониторинг (S.M.A.R.T., температура)',
-  'Гарантия 12 месяцев на сборку',
-];
