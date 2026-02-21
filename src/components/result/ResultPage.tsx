@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useWizardStore } from '../../store/wizard-store';
 import { ConfigCard } from './ConfigCard';
@@ -5,12 +6,19 @@ import { StorageBreakdown } from './StorageBreakdown';
 import { PriceTable } from './PriceTable';
 import { InsightsSection } from './InsightsSection';
 import { ServicesList } from './ServicesList';
+import { SynologyComparison } from './SynologyComparison';
 import { PdfExport } from './PdfExport';
 import { Button } from '../ui/Button';
 import { getShareUrl } from '../../utils/share';
+import { generateSynologyComparison } from '../../engine/synology-comparison';
 
 export function ResultPage() {
   const { result, answers, setShowResult, reset } = useWizardStore();
+
+  const synologyComparison = useMemo(() => {
+    if (!result) return null;
+    return generateSynologyComparison(result, answers);
+  }, [result, answers]);
 
   if (!result) {
     return (
@@ -40,10 +48,11 @@ export function ResultPage() {
       <ConfigCard config={result} />
       <StorageBreakdown breakdown={result.storageBreakdown} />
       <PriceTable estimate={result.priceEstimate} />
+      {synologyComparison && <SynologyComparison comparison={synologyComparison} />}
       <InsightsSection insights={result.insights} />
       <ServicesList />
 
-      <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-border">
+      <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-border no-print">
         <PdfExport config={result} />
         <Button variant="secondary" onClick={handleShare}>
           Поделиться ссылкой

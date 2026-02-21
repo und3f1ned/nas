@@ -21,7 +21,14 @@ export function generateConfig(answers: WizardAnswers): NASConfig {
   // 1. Calculate storage needs
   let surveillanceTB = 0;
   if (answers.useCases.includes('surveillance') && answers.surveillance) {
-    surveillanceTB = calcSurveillanceStorageTB(answers.surveillance);
+    surveillanceTB = calcSurveillanceStorageTB({
+      cameras: answers.surveillance.cameras,
+      resolution: answers.surveillance.resolution,
+      fps: answers.surveillance.fps,
+      codec: answers.surveillance.codec,
+      days: answers.surveillance.storageDays,
+      motionOnly: answers.surveillance.motionOnly,
+    });
   }
 
   let fileStorageTB = 0;

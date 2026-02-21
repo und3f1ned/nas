@@ -30,20 +30,23 @@ export function calcCpuScore(answers: WizardAnswers): number {
   }
 
   if (answers.useCases.includes('surveillance') && answers.surveillance) {
-    score += Math.ceil(answers.surveillance.cameras / 16);
+    // Each 4 cameras adds meaningful CPU load (decode, motion detect, recording)
+    score += Math.ceil(answers.surveillance.cameras / 4);
   }
 
   if (answers.useCases.includes('docker') && answers.docker) {
-    const heavy = answers.docker.heavyServices.length > 3;
-    score += heavy ? 3 : answers.docker.containerRange === '15+' ? 2 : 1;
+    const heavyCount = answers.docker.heavyServices.length;
+    score += heavyCount >= 4 ? 4 : heavyCount >= 2 ? 3 : answers.docker.containerRange === '15+' ? 2 : 1;
   }
 
   if (answers.useCases.includes('vm') && answers.vm) {
-    score += answers.vm.count <= 2 ? 2 : 4;
+    // VMs are CPU-intensive: 1-2 = mid, 3-4 = heavy, 5+ = server-class
+    score += answers.vm.count <= 2 ? 3 : answers.vm.count <= 4 ? 5 : 7;
   }
 
   if (answers.useCases.includes('business') && answers.business) {
-    score += answers.business.users > 15 ? 3 : 2;
+    // Concurrent users create real CPU load: AD, indexing, file locks, search
+    score += answers.business.users > 20 ? 6 : answers.business.users > 10 ? 4 : 2;
   }
 
   return score;
@@ -163,10 +166,11 @@ export function determineStorageRequirements(
 
   const hasSurveillance = answers.useCases.includes('surveillance');
   const minDrives = minDrivesForRaid(raidType);
-  const standardSizes = [4, 8, 12, 16, 20];
+  const standardSizes = [4, 8, 12, 16, 20, 24];
 
   let bestDriveSize = standardSizes[0];
   let bestDriveCount = minDrives;
+  let found = false;
 
   for (const size of standardSizes) {
     for (let count = minDrives; count <= Math.min(maxBays, 12); count++) {
@@ -174,12 +178,17 @@ export function determineStorageRequirements(
       if (usable * 1.1 >= totalRequiredTB) {
         bestDriveSize = size;
         bestDriveCount = count;
+        found = true;
         break;
       }
     }
-    if (calcRaidCapacity(bestDriveCount, bestDriveSize, raidType) * 1.1 >= totalRequiredTB) {
-      break;
-    }
+    if (found) break;
+  }
+
+  // If no combo fits, use max bays with largest drives
+  if (!found) {
+    bestDriveCount = Math.min(maxBays, 12);
+    bestDriveSize = standardSizes[standardSizes.length - 1];
   }
 
   let driveClass: DriveClass = 'nas';

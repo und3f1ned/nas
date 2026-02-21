@@ -14,7 +14,6 @@ import type {
   ReliabilityAnswers,
   FormFactorAnswers,
   BudgetAnswers,
-  WIZARD_STEPS,
 } from '../types/wizard';
 import type { NASConfig } from '../types/config';
 
@@ -77,7 +76,6 @@ const defaultAnswers: WizardAnswers = {
     placement: 'home',
     noiseLevel: 'quiet',
     bayCount: 'auto',
-    needUps: false,
   },
   budget: {
     includeDisks: true,

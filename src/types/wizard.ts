@@ -73,7 +73,6 @@ export interface FormFactorAnswers {
   placement: Placement;
   noiseLevel: NoiseLevel;
   bayCount: BayCount;
-  needUps: boolean;
 }
 
 export interface BudgetAnswers {

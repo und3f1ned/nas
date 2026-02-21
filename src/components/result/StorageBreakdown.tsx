@@ -52,7 +52,7 @@ export function StorageBreakdown({ breakdown }: StorageBreakdownProps) {
                   borderRadius: '8px',
                   color: '#f1f5f9',
                 }}
-                formatter={(value: number) => formatTB(value)}
+                formatter={(value: number | undefined) => formatTB(value ?? 0)}
               />
               <Legend
                 formatter={(value: string) => (

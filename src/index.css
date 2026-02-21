@@ -85,3 +85,47 @@ input[type="range"]::-moz-range-thumb {
   background: var(--color-accent);
   border: 2px solid var(--color-bg-primary);
 }
+
+/* Print styles for PDF export */
+@media print {
+  body {
+    background: white !important;
+    color: #1a1a1a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide navigation, buttons, footer */
+  header, footer, nav,
+  button, .no-print {
+    display: none !important;
+  }
+
+  /* Show main content on white background */
+  main, #root, [class*="bg-bg"] {
+    background: white !important;
+    color: #1a1a1a !important;
+  }
+
+  [class*="text-text-primary"] { color: #1a1a1a !important; }
+  [class*="text-text-secondary"] { color: #4a4a4a !important; }
+  [class*="text-text-muted"] { color: #6a6a6a !important; }
+  [class*="border-border"] { border-color: #ddd !important; }
+
+  /* Cards get light borders */
+  [class*="bg-bg-card"] {
+    background: #f9f9f9 !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Keep colored badges visible */
+  [class*="bg-accent"] { background: #3b82f6 !important; color: white !important; }
+  [class*="bg-success"] { background: #22c55e !important; color: white !important; }
+  [class*="bg-warning"] { background: #f59e0b !important; color: white !important; }
+  [class*="bg-danger"] { background: #ef4444 !important; color: white !important; }
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}
